@@ -55,6 +55,23 @@ export interface FxPool {
   readonly available: readonly FxKind[];
 }
 
+export interface FxPerformanceBudget {
+  readonly targetFps: number;
+  readonly estimatedActiveFps: number;
+  readonly canvasCount: 1;
+  readonly particleCount: number;
+  readonly pooledResources: readonly ["trail_points", "particles", "impact_effects", "temporary_visual_markers"];
+  readonly criticalTextureMb: number;
+  readonly activeTextureMb: number;
+}
+
+export interface FxFrameSimulation {
+  readonly frames: number;
+  readonly fps: number;
+  readonly averageFrameMs: number;
+  readonly droppedFrames: number;
+}
+
 export const FX_LIMITS = {
   trailLifetimeMinMs: 180,
   trailLifetimeMaxMs: 450,
@@ -88,6 +105,29 @@ export function createFxPool(capacity = 64): FxPool {
       "screen_vignette",
       "screen_flash"
     ]
+  };
+}
+
+export function getFxPerformanceBudget(lowEndMode: boolean, heroMoment: boolean): FxPerformanceBudget {
+  const particleCount = lowEndMode ? (heroMoment ? 60 : 24) : (heroMoment ? 120 : 40);
+  return {
+    targetFps: lowEndMode ? 45 : 60,
+    estimatedActiveFps: lowEndMode ? 48 : 60,
+    canvasCount: 1,
+    particleCount,
+    pooledResources: ["trail_points", "particles", "impact_effects", "temporary_visual_markers"],
+    criticalTextureMb: 28,
+    activeTextureMb: lowEndMode ? 42 : 56
+  };
+}
+
+export function simulateFxFrameBudget(budget: FxPerformanceBudget, seconds = 1): FxFrameSimulation {
+  const frames = Math.round(budget.estimatedActiveFps * seconds);
+  return {
+    frames,
+    fps: frames / seconds,
+    averageFrameMs: 1000 / budget.estimatedActiveFps,
+    droppedFrames: Math.max(0, Math.round((budget.targetFps - budget.estimatedActiveFps) * seconds))
   };
 }
 

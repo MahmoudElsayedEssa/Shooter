@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createFxPool, planVisualEffects, type FxContext } from "./VisualEffects";
+import {
+  createFxPool,
+  getFxPerformanceBudget,
+  planVisualEffects,
+  simulateFxFrameBudget,
+  type FxContext
+} from "./VisualEffects";
 
 const baseContext: FxContext = {
   outcome: "goal",
@@ -110,5 +116,61 @@ describe("REQ-FX-001 visual effects system", () => {
     expect(normal.densityMultiplier).toBe(1);
     expect(lowEnd.densityMultiplier).toBe(0.5);
     expect(lowEnd.outcome).toBe(normal.outcome);
+  });
+});
+
+describe("NFR-PERF-001 fx performance budgets", () => {
+  it("AC1 and AC2 simulate target and low-end frame budgets", () => {
+    const target = getFxPerformanceBudget(false, false);
+    const lowEnd = getFxPerformanceBudget(true, false);
+
+    expect(simulateFxFrameBudget(target, 2)).toEqual({
+      frames: 120,
+      fps: 60,
+      averageFrameMs: 16.666666666666668,
+      droppedFrames: 0
+    });
+    expect(simulateFxFrameBudget(lowEnd, 2)).toEqual({
+      frames: 96,
+      fps: 48,
+      averageFrameMs: 20.833333333333332,
+      droppedFrames: 0
+    });
+  });
+
+  it("AC3 through AC6 enforce pooling canvas particle and texture budgets", () => {
+    expect({
+      normal: getFxPerformanceBudget(false, false),
+      hero: getFxPerformanceBudget(false, true),
+      lowEndHero: getFxPerformanceBudget(true, true)
+    }).toEqual({
+      normal: {
+        targetFps: 60,
+        estimatedActiveFps: 60,
+        canvasCount: 1,
+        particleCount: 40,
+        pooledResources: ["trail_points", "particles", "impact_effects", "temporary_visual_markers"],
+        criticalTextureMb: 28,
+        activeTextureMb: 56
+      },
+      hero: {
+        targetFps: 60,
+        estimatedActiveFps: 60,
+        canvasCount: 1,
+        particleCount: 120,
+        pooledResources: ["trail_points", "particles", "impact_effects", "temporary_visual_markers"],
+        criticalTextureMb: 28,
+        activeTextureMb: 56
+      },
+      lowEndHero: {
+        targetFps: 45,
+        estimatedActiveFps: 48,
+        canvasCount: 1,
+        particleCount: 60,
+        pooledResources: ["trail_points", "particles", "impact_effects", "temporary_visual_markers"],
+        criticalTextureMb: 28,
+        activeTextureMb: 42
+      }
+    });
   });
 });
