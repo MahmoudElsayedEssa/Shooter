@@ -121,3 +121,95 @@ describe("ARCH-RENDER-001 render architecture", () => {
     expect(() => requireFromTest.resolve("pixijs")).toThrow();
   });
 });
+
+describe("ARCH-STATE-001 runtime state architecture", () => {
+  const runtimeState = SINGLE_CANVAS_RENDER_CONTRACT.runtimeState;
+
+  it("AC1 exposes documented runtime sub-states with typed fields", () => {
+    const state = runtimeState.createInitialRuntimeState();
+
+    expect(state.input).toEqual({
+      pointerX: 0,
+      pointerY: 0,
+      isPressed: false,
+      sequence: 0
+    });
+    expect(state.simulation).toMatchObject({
+      tick: 0,
+      elapsedSeconds: 0,
+      droppedTimeSeconds: 0
+    });
+    expect(state.render).toEqual({
+      frame: 0,
+      interpolationAlpha: 0,
+      visibleLayerCount: 7
+    });
+    expect(state.tuning).toBe(runtimeState.defaultTuningConfig);
+  });
+
+  it("AC2 documents read and write ownership for each runtime system", () => {
+    expect(runtimeState.stateOwnership).toEqual([
+      {
+        system: "input",
+        reads: ["input", "tuning"],
+        writes: ["input"]
+      },
+      {
+        system: "simulation",
+        reads: ["input", "simulation", "tuning"],
+        writes: ["simulation"]
+      },
+      {
+        system: "post-simulation",
+        reads: ["simulation", "render", "tuning"],
+        writes: ["render"]
+      }
+    ]);
+
+    for (const ownership of runtimeState.stateOwnership) {
+      expect(runtimeState.getSystemOwnership(ownership.system)).toBe(ownership);
+      expect(ownership.writes).toHaveLength(1);
+    }
+  });
+
+  it("AC2 prevents systems from writing outside their owned state", () => {
+    const state = runtimeState.createInitialRuntimeState();
+    const updatedInput = {
+      ...state.input,
+      pointerX: 25,
+      sequence: 1
+    };
+
+    expect(runtimeState.applyOwnedStateUpdate("input", state, "input", updatedInput).input).toBe(
+      updatedInput
+    );
+    expect(() =>
+      runtimeState.applyOwnedStateUpdate("input", state, "simulation", state.simulation)
+    ).toThrow("input cannot write simulation state");
+    expect(() =>
+      runtimeState.applyOwnedStateUpdate("simulation", state, "render", state.render)
+    ).toThrow("simulation cannot write render state");
+  });
+
+  it("AC3 loads all tuning constants from centralized data without algorithm changes", () => {
+    const customTuning = {
+      fixedDtSeconds: 1 / 30,
+      maxCatchUpSteps: 2,
+      renderWidth: 1280,
+      renderHeight: 720
+    };
+    const state = runtimeState.createInitialRuntimeState(customTuning);
+
+    expect(runtimeState.defaultTuningConfig).toEqual({
+      fixedDtSeconds: 1 / 60,
+      maxCatchUpSteps: 3,
+      renderWidth: 960,
+      renderHeight: 540
+    });
+    expect(state.tuning).toBe(customTuning);
+    expect(
+      runtimeState.createInitialRuntimeState({ ...customTuning, renderWidth: 1440 }).tuning
+        .renderWidth
+    ).toBe(1440);
+  });
+});

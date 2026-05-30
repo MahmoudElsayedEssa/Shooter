@@ -8,10 +8,51 @@ export type RenderLayerName =
   | "frontGoal"
   | "effects"
   | "ui";
+type RuntimeSystemName = "input" | "simulation" | "post-simulation";
+type RuntimeStateKey = "input" | "simulation" | "render" | "tuning";
 
 export interface RenderLayerDefinition {
   readonly name: RenderLayerName;
   readonly depth: number;
+}
+
+interface InputState {
+  readonly pointerX: number;
+  readonly pointerY: number;
+  readonly isPressed: boolean;
+  readonly sequence: number;
+}
+
+interface StateSimulationSnapshot {
+  readonly tick: number;
+  readonly elapsedSeconds: number;
+  readonly droppedTimeSeconds: number;
+}
+
+interface RuntimeRenderState {
+  readonly frame: number;
+  readonly interpolationAlpha: number;
+  readonly visibleLayerCount: number;
+}
+
+interface TuningConfig {
+  readonly fixedDtSeconds: number;
+  readonly maxCatchUpSteps: number;
+  readonly renderWidth: number;
+  readonly renderHeight: number;
+}
+
+interface RuntimeStateTree {
+  readonly input: InputState;
+  readonly simulation: StateSimulationSnapshot;
+  readonly render: RuntimeRenderState;
+  readonly tuning: TuningConfig;
+}
+
+interface SystemOwnership {
+  readonly system: RuntimeSystemName;
+  readonly reads: readonly RuntimeStateKey[];
+  readonly writes: readonly RuntimeStateKey[];
 }
 
 export const LOGICAL_LAYER_ORDER: readonly RenderLayerDefinition[] = [
@@ -24,11 +65,43 @@ export const LOGICAL_LAYER_ORDER: readonly RenderLayerDefinition[] = [
   { name: "ui", depth: 60 }
 ] as const;
 
+const DEFAULT_TUNING_CONFIG: TuningConfig = Object.freeze({
+  fixedDtSeconds: 1 / 60,
+  maxCatchUpSteps: 3,
+  renderWidth: 960,
+  renderHeight: 540
+});
+
+const STATE_OWNERSHIP: readonly SystemOwnership[] = [
+  {
+    system: "input",
+    reads: ["input", "tuning"],
+    writes: ["input"]
+  },
+  {
+    system: "simulation",
+    reads: ["input", "simulation", "tuning"],
+    writes: ["simulation"]
+  },
+  {
+    system: "post-simulation",
+    reads: ["simulation", "render", "tuning"],
+    writes: ["render"]
+  }
+] as const;
+
 export const SINGLE_CANVAS_RENDER_CONTRACT = {
   renderer: "phaser",
   canvasOwner: "Phaser.Game",
   canvasCount: 1,
-  forbiddenRenderer: "pixijs"
+  forbiddenRenderer: "pixijs",
+  runtimeState: {
+    defaultTuningConfig: DEFAULT_TUNING_CONFIG,
+    stateOwnership: STATE_OWNERSHIP,
+    createInitialRuntimeState,
+    getSystemOwnership,
+    applyOwnedStateUpdate
+  }
 } as const;
 
 export interface PhaserLayerLike {
@@ -57,6 +130,56 @@ export function createLogicalLayers(scene: PhaserLayerSceneLike): RenderLayerMap
   }
 
   return layers;
+}
+
+function createInitialRuntimeState(tuning: TuningConfig = DEFAULT_TUNING_CONFIG): RuntimeStateTree {
+  return {
+    input: {
+      pointerX: 0,
+      pointerY: 0,
+      isPressed: false,
+      sequence: 0
+    },
+    simulation: {
+      tick: 0,
+      elapsedSeconds: 0,
+      droppedTimeSeconds: 0
+    },
+    render: {
+      frame: 0,
+      interpolationAlpha: 0,
+      visibleLayerCount: LOGICAL_LAYER_ORDER.length
+    },
+    tuning
+  };
+}
+
+function getSystemOwnership(system: RuntimeSystemName): SystemOwnership {
+  const ownership = STATE_OWNERSHIP.find((entry) => entry.system === system);
+
+  if (ownership === undefined) {
+    throw new Error(`Unknown system ownership: ${system}`);
+  }
+
+  return ownership;
+}
+
+function applyOwnedStateUpdate<Key extends RuntimeStateKey>(
+  system: RuntimeSystemName,
+  state: RuntimeStateTree,
+  key: Key,
+  value: RuntimeStateTree[Key]
+): RuntimeStateTree {
+  const ownership = getSystemOwnership(system);
+
+  if (!ownership.writes.includes(key)) {
+    throw new Error(`${system} cannot write ${key} state`);
+  }
+
+  return {
+    ...state,
+    [key]: value
+  };
 }
 
 export function isDrawnAbove(frontLayer: RenderLayerName, backLayer: RenderLayerName): boolean {
