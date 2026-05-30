@@ -23,6 +23,7 @@ describe("ARCH-STACK-001 technology stack", () => {
     expect(packageJson.scripts.build).toContain("vite build");
     expect(tsconfig.compilerOptions.strict).toBe(true);
     expect(dependencies.phaser).toMatch(/^\^3\./);
+    expect(dependencies).not.toHaveProperty("pixijs");
     expect(packageJson.devDependencies.vite).toBeDefined();
     expect(createGameConfig("game-root").type).toBe(Phaser.WEBGL);
   });

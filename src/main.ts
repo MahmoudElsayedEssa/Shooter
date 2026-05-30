@@ -136,11 +136,25 @@ export function createGameConfig(parent: string | HTMLElement): Phaser.Types.Cor
     banner: false,
     render: {
       antialias: true,
-      transparent: false
+      transparent: false,
+      powerPreference: "high-performance"
     },
     callbacks: {
       preBoot: (game: Phaser.Game) => {
         game.registry.set("maatArchitectureEvidence", phaserStackMetadata);
+        game.registry.set("maatPerformanceAuthority", {
+          renderer: "webgl",
+          canvasCount: 1,
+          activeGameplayControlSurface: "phaser_canvas",
+          instrumentation: [
+            "fps",
+            "frameTimeMs",
+            "droppedCatchUpSteps",
+            "activeParticles",
+            "textureMemoryEstimateMb",
+            "lowEndMode"
+          ]
+        });
         game.registry.set("maatRenderLayerOrder", {
           field: getLayerDepth("field"),
           backGoal: getLayerDepth("backGoal"),

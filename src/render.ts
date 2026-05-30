@@ -92,9 +92,29 @@ const STATE_OWNERSHIP: readonly SystemOwnership[] = [
 
 export const SINGLE_CANVAS_RENDER_CONTRACT = {
   renderer: "phaser",
+  preferredRenderer: "webgl",
   canvasOwner: "Phaser.Game",
   canvasCount: 1,
   forbiddenRenderer: "pixijs",
+  activeGameplayControlSurface: "phaser_canvas",
+  domHeavyActiveGameplayUi: false,
+  simulationAuthority: {
+    phaserTweens: "forbidden",
+    phaserTimelines: "forbidden",
+    authoritativeSystems: ["ball_flight", "collision", "goalkeeper_reach", "scoring", "pressure"]
+  },
+  performanceInstrumentation: {
+    fps: true,
+    frameTimeMs: true,
+    droppedCatchUpSteps: true,
+    activeParticles: true,
+    textureMemoryEstimateMb: true,
+    lowEndMode: true
+  },
+  lowEndMode: {
+    reducesPresentationOnly: true,
+    preservesShotOutcomeLogic: true
+  },
   runtimeState: {
     defaultTuningConfig: DEFAULT_TUNING_CONFIG,
     stateOwnership: STATE_OWNERSHIP,

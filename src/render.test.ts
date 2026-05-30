@@ -44,8 +44,11 @@ describe("ARCH-RENDER-001 render architecture", () => {
     expect(config.canvas).toBeUndefined();
     expect(SINGLE_CANVAS_RENDER_CONTRACT).toMatchObject({
       renderer: "phaser",
+      preferredRenderer: "webgl",
       canvasOwner: "Phaser.Game",
-      canvasCount: 1
+      canvasCount: 1,
+      activeGameplayControlSurface: "phaser_canvas",
+      domHeavyActiveGameplayUi: false
     });
   });
 
@@ -101,6 +104,19 @@ describe("ARCH-RENDER-001 render architecture", () => {
       effects: 50,
       ui: 60
     });
+    expect(registryValues.get("maatPerformanceAuthority")).toEqual({
+      renderer: "webgl",
+      canvasCount: 1,
+      activeGameplayControlSurface: "phaser_canvas",
+      instrumentation: [
+        "fps",
+        "frameTimeMs",
+        "droppedCatchUpSteps",
+        "activeParticles",
+        "textureMemoryEstimateMb",
+        "lowEndMode"
+      ]
+    });
   });
 
   it("AC3 preserves depth illusion for keeper, ball, and front goal", () => {
@@ -119,6 +135,46 @@ describe("ARCH-RENDER-001 render architecture", () => {
     expect(allDependencies).not.toHaveProperty("pixijs");
     expect(SINGLE_CANVAS_RENDER_CONTRACT.forbiddenRenderer).toBe("pixijs");
     expect(() => requireFromTest.resolve("pixijs")).toThrow();
+  });
+});
+
+describe("ARCH-PERF-001 Phaser WebGL mobile performance authority", () => {
+  it("AC2 uses one Phaser WebGL canvas with high-performance render preference", () => {
+    const config = createGameConfig("game-root");
+
+    expect(config.type).toBe(Phaser.WEBGL);
+    expect(config.render).toMatchObject({
+      antialias: true,
+      transparent: false,
+      powerPreference: "high-performance"
+    });
+    expect(SINGLE_CANVAS_RENDER_CONTRACT.canvasCount).toBe(1);
+  });
+
+  it("AC3 keeps gameplay authority independent from Phaser tweens and timelines", () => {
+    expect(SINGLE_CANVAS_RENDER_CONTRACT.simulationAuthority).toEqual({
+      phaserTweens: "forbidden",
+      phaserTimelines: "forbidden",
+      authoritativeSystems: ["ball_flight", "collision", "goalkeeper_reach", "scoring", "pressure"]
+    });
+  });
+
+  it("AC4 exposes required performance instrumentation fields", () => {
+    expect(SINGLE_CANVAS_RENDER_CONTRACT.performanceInstrumentation).toEqual({
+      fps: true,
+      frameTimeMs: true,
+      droppedCatchUpSteps: true,
+      activeParticles: true,
+      textureMemoryEstimateMb: true,
+      lowEndMode: true
+    });
+  });
+
+  it("AC5 lets low-end mode reduce presentation without changing shot outcome logic", () => {
+    expect(SINGLE_CANVAS_RENDER_CONTRACT.lowEndMode).toEqual({
+      reducesPresentationOnly: true,
+      preservesShotOutcomeLogic: true
+    });
   });
 });
 
