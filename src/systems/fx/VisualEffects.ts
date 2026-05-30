@@ -67,11 +67,29 @@ export interface FxPerformanceBudget {
   readonly activeTextureMb: number;
 }
 
+export type FxPerformanceGateBudget = Omit<FxPerformanceBudget, "canvasCount"> & {
+  readonly canvasCount: number;
+};
+
 export interface FxFrameSimulation {
   readonly frames: number;
   readonly fps: number;
   readonly averageFrameMs: number;
   readonly droppedFrames: number;
+}
+
+export type FxPerformanceGateReason =
+  | "fps_below_target"
+  | "multiple_canvases"
+  | "particle_budget_exceeded"
+  | "critical_texture_budget_exceeded"
+  | "active_texture_budget_exceeded";
+
+export interface FxPerformanceGateReport {
+  readonly releaseGate: true;
+  readonly passed: boolean;
+  readonly reasons: readonly FxPerformanceGateReason[];
+  readonly budget: FxPerformanceGateBudget;
 }
 
 export const FX_LIMITS = {
@@ -91,7 +109,10 @@ export const FX_LIMITS = {
   screenFlashMaxOpacity: 0.12,
   hitStopMinMs: 40,
   hitStopMaxMs: 90,
-  lowEndDensityMultiplier: 0.5
+  lowEndDensityMultiplier: 0.5,
+  maxParticles: 120,
+  maxCriticalTextureMb: 28,
+  maxActiveTextureMb: 56
 } as const;
 
 export function createFxPool(capacity = 64): FxPool {
@@ -130,6 +151,37 @@ export function simulateFxFrameBudget(budget: FxPerformanceBudget, seconds = 1):
     fps: frames / seconds,
     averageFrameMs: 1000 / budget.estimatedActiveFps,
     droppedFrames: Math.max(0, Math.round((budget.targetFps - budget.estimatedActiveFps) * seconds))
+  };
+}
+
+export function evaluateFxPerformanceGate(budget: FxPerformanceGateBudget): FxPerformanceGateReport {
+  const reasons: FxPerformanceGateReason[] = [];
+
+  if (budget.estimatedActiveFps < budget.targetFps) {
+    reasons.push("fps_below_target");
+  }
+
+  if (budget.canvasCount !== 1) {
+    reasons.push("multiple_canvases");
+  }
+
+  if (budget.particleCount > FX_LIMITS.maxParticles) {
+    reasons.push("particle_budget_exceeded");
+  }
+
+  if (budget.criticalTextureMb > FX_LIMITS.maxCriticalTextureMb) {
+    reasons.push("critical_texture_budget_exceeded");
+  }
+
+  if (budget.activeTextureMb > FX_LIMITS.maxActiveTextureMb) {
+    reasons.push("active_texture_budget_exceeded");
+  }
+
+  return {
+    releaseGate: true,
+    passed: reasons.length === 0,
+    reasons,
+    budget
   };
 }
 

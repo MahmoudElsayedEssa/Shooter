@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createFxPool,
+  evaluateFxPerformanceGate,
   getFxPerformanceBudget,
   planVisualEffects,
   simulateFxFrameBudget,
@@ -187,6 +188,39 @@ describe("PILLAR-006 performance is gameplay", () => {
       outcome: normal.outcome,
       inputLocked: false,
       gameplayPreserved: true
+    });
+  });
+});
+
+describe("METHOD-PERFORMANCE-001 performance budget release gate", () => {
+  it("passes release when the active fx budget stays inside fps particle canvas and texture limits", () => {
+    expect(evaluateFxPerformanceGate(getFxPerformanceBudget(false, true))).toMatchObject({
+      releaseGate: true,
+      passed: true,
+      reasons: []
+    });
+  });
+
+  it("blocks release with explicit reasons when the active fx budget exceeds mobile limits", () => {
+    const report = evaluateFxPerformanceGate({
+      ...getFxPerformanceBudget(false, true),
+      estimatedActiveFps: 52,
+      canvasCount: 2,
+      particleCount: 160,
+      criticalTextureMb: 34,
+      activeTextureMb: 72
+    });
+
+    expect(report).toMatchObject({
+      releaseGate: true,
+      passed: false,
+      reasons: [
+        "fps_below_target",
+        "multiple_canvases",
+        "particle_budget_exceeded",
+        "critical_texture_budget_exceeded",
+        "active_texture_budget_exceeded"
+      ]
     });
   });
 });
