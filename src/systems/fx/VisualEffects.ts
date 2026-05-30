@@ -46,6 +46,8 @@ export interface FxPlan {
   readonly poolBased: boolean;
   readonly effects: readonly FxEffect[];
   readonly densityMultiplier: number;
+  readonly performanceMode: "full_fidelity" | "reduced_fx";
+  readonly gameplayPreserved: true;
   readonly hitStopMs: number;
   readonly inputLocked: false;
 }
@@ -156,6 +158,8 @@ export function planVisualEffects(context: FxContext, pool: FxPool = createFxPoo
     poolBased: pool.capacity > 0 && effects.every((effect) => pool.available.includes(effect.poolKey)),
     effects,
     densityMultiplier,
+    performanceMode: context.lowEndMode ? "reduced_fx" : "full_fidelity",
+    gameplayPreserved: true,
     hitStopMs: getHitStop(context),
     inputLocked: false
   };

@@ -174,3 +174,19 @@ describe("NFR-PERF-001 fx performance budgets", () => {
     });
   });
 });
+
+describe("PILLAR-006 performance is gameplay", () => {
+  it("keeps reduced-fx performance mode from changing gameplay result or input safety", () => {
+    const normal = plan({ outcome: "save", reason: "keeper_contact", lowEndMode: false });
+    const reduced = plan({ outcome: "save", reason: "keeper_contact", lowEndMode: true });
+
+    expect(normal.performanceMode).toBe("full_fidelity");
+    expect(reduced.performanceMode).toBe("reduced_fx");
+    expect(reduced.densityMultiplier).toBeLessThan(normal.densityMultiplier);
+    expect(reduced).toMatchObject({
+      outcome: normal.outcome,
+      inputLocked: false,
+      gameplayPreserved: true
+    });
+  });
+});
