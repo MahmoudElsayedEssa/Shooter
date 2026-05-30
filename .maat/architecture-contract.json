@@ -1,0 +1,188 @@
+{
+  "policyVersion": "v1",
+  "sourcePlanId": "PLAN-20260530T071051Z",
+  "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+  "records": [
+    {
+      "id": "ARCH-STACK-001",
+      "title": "Technology stack",
+      "decisions": [
+        "TypeScript (strict mode), Phaser 3 (2D game framework/renderer), Vite (build tool), Phaser Sound as the default audio layer, and custom arcade shot/collision logic. Howler.js is optional only if Phaser Sound proves insufficient and the SRS or task explicitly allows it."
+      ],
+      "architectureConstraints": [
+        "Phaser is the required runtime/game framework for MVP.",
+        "Gameplay-critical motion must not depend on animation/tween timelines.",
+        "Phaser Tweens are allowed only for UI, camera, FX, and non-gameplay presentation.",
+        "Ball movement, goalkeeper reach, collision timing, score outcomes, and fairness-critical state must remain simulation-driven.",
+        "Phaser Arcade Physics may be used only for non-authoritative helper calculations if explicitly justified; authoritative shot outcomes remain custom/deterministic."
+      ],
+      "requiredStack": [
+        "Phaser runtime",
+        "game MVP"
+      ],
+      "forbidden": [
+        "PixiJS",
+        "Unity WebGL",
+        "Box2D / Matter.js",
+        "Redux or heavy state frameworks",
+        "Any stack change by an agent without updating and re-importing this SRS first"
+      ],
+      "normalizedRequired": [
+        "phaser",
+        "typescript",
+        "vite"
+      ],
+      "normalizedForbidden": [
+        "pixijs",
+        "unity-webgl",
+        "box2d",
+        "matter-js",
+        "redux",
+        "heavy-state"
+      ],
+      "sourceLine": 1004
+    },
+    {
+      "id": "ARCH-PERF-001",
+      "title": "Phaser WebGL mobile performance authority",
+      "decisions": [
+        "The implementation remains Phaser 3 + TypeScript + Vite, but Phaser is used as a lightweight WebGL renderer and scene runtime. Gameplay authority remains custom fixed-step simulation code."
+      ],
+      "architectureConstraints": [
+        "Phaser Game config must prefer WebGL renderer for production; Canvas fallback is QA/fallback only.",
+        "The game uses one Phaser Game instance and one canvas.",
+        "Main gameplay should use a small, controlled number of scenes: boot/loading, gameplay, optional UI overlay scene.",
+        "Gameplay-critical state is not stored inside Phaser display objects.",
+        "Ball, goalkeeper, collision, score, pressure, and outcome are simulation-owned.",
+        "Phaser Tweens are allowed for UI, camera, FX, and non-authoritative presentation only.",
+        "Object pools must be used for trails, particles, impact markers, temporary sprites, and reusable geometry.",
+        "No per-frame creation of textures, graphics objects, emitters, arrays, or closures inside active hot paths unless justified and measured."
+      ],
+      "requiredStack": [
+        "phaser",
+        "webgl",
+        "single-canvas",
+        "Object pools trails",
+        "particles",
+        "impact markers",
+        "temporary sprites",
+        "reusable geometry"
+      ],
+      "expectedStack": [
+        "object-pooling",
+        "texture-atlases",
+        "performance-instrumentation"
+      ],
+      "forbidden": [
+        "multiple gameplay canvases",
+        "DOM-heavy active gameplay UI",
+        "Matter.js",
+        "Arcade Physics as authoritative collision",
+        "Phaser Tweens controlling ball trajectory",
+        "collision timing",
+        "creating",
+        "destroying display objects in shot hot path",
+        "unbounded particle emitters"
+      ],
+      "normalizedRequired": [
+        "phaser",
+        "webgl",
+        "single-canvas",
+        "object-pools-trails",
+        "particles",
+        "impact-markers",
+        "temporary-sprites",
+        "reusable-geometry"
+      ],
+      "normalizedExpected": [
+        "object-pooling",
+        "texture-atlases",
+        "performance-instrumentation"
+      ],
+      "normalizedForbidden": [
+        "multiple-gameplay-canvases",
+        "dom-heavy-active-gameplay-ui",
+        "matter-js",
+        "collision-timing",
+        "creating",
+        "unbounded-particle-emitters"
+      ],
+      "ambiguousArchitecture": [
+        "Phaser Game config must prefer WebGL renderer for production; Canvas fallback is QA/fallback only."
+      ],
+      "sourceLine": 1042
+    },
+    {
+      "id": "ARCH-ASSET-001",
+      "title": "Texture atlas and staged loading pipeline",
+      "decisions": [
+        "Assets are loaded in stages: critical gameplay first, optional polish later. Sprite assets are grouped into atlases where practical to reduce mobile texture switching and memory overhead."
+      ],
+      "architectureConstraints": [
+        "Boot scene loads only critical assets needed for first shot.",
+        "Optional advanced FX, crowd polish, and cosmetics may load after `ready` or lazily when needed.",
+        "Texture dimensions, file sizes, and load priority are tracked in an asset manifest.",
+        "Audio files load/unlock after user interaction and must never block gameplay if unavailable.",
+        "Asset fallback placeholders are allowed only when they preserve gameplay readability."
+      ],
+      "expectedStack": [
+        "texture-atlas",
+        "staged-loading",
+        "compressed-assets"
+      ],
+      "forbidden": [
+        "loading all art before first playable state",
+        "huge standalone images in critical path",
+        "audio unlock blocking game start"
+      ],
+      "normalizedExpected": [
+        "texture-atlas",
+        "staged-loading",
+        "compressed-assets"
+      ],
+      "sourceLine": 1097
+    },
+    {
+      "id": "ARCH-GAMELOOP-001",
+      "title": "Fixed-step simulation loop",
+      "decisions": [
+        "60Hz fixed-step simulation loop. Rendering via requestAnimationFrame runs independently. Gameplay outcomes computed by fixed-step, not variable-frame rendering."
+      ],
+      "architectureConstraints": [
+        "Fixed delta = 1/60s.",
+        "Max 3 catch-up steps per rendered frame. Excess accumulated time dropped.",
+        "Rendering may interpolate between snapshots but must not affect collision or outcomes."
+      ],
+      "sourceLine": 1135
+    },
+    {
+      "id": "ARCH-RENDER-001",
+      "title": "Single Phaser canvas with logical layers",
+      "decisions": [
+        "One canvas created by Phaser. Logical layers are implemented using Phaser Scene display order, Containers, or depth values."
+      ],
+      "architectureConstraints": [
+        "Phaser owns the single canvas and render loop integration.",
+        "Stadium draws first. UI draws above gameplay but must not block core play areas.",
+        "Front goal frame draws above ball for depth illusion.",
+        "Cinematic overlay draws last.",
+        "Phaser display objects must read presentation state and must not mutate gameplay-authoritative state outside simulation ticks."
+      ],
+      "sourceLine": 1174
+    },
+    {
+      "id": "ARCH-STATE-001",
+      "title": "Runtime state tree with ownership",
+      "decisions": [
+        "Central runtime state tree with explicit read/write ownership per system. All gameplay-critical values in a centralized tuning registry loadable as data."
+      ],
+      "architectureConstraints": [
+        "Systems must only write to their owned state slice.",
+        "Rendering code must never mutate the state tree.",
+        "State mutations only occur during simulation ticks.",
+        "Tuning constants must be importable from a single config module."
+      ],
+      "sourceLine": 1212
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+# >>> Ma'at Git sharing
+# Ma'at Git sharing: shared rules are trackable; runtime state is local.
+.maat/**
+!.maat/
+!.maat/policy.json
+!.maat/constitution.json
+!.maat/adoption.json
+!.maat/architecture-contract.json
+!.maat/requirements/
+!.maat/requirements/*.json
+!.maat/roadmap/
+!.maat/roadmap/**
+!.maat/spec-snapshots/
+!.maat/spec-snapshots/**
+!.maat/skills/
+!.maat/skills/*.json
+
+.maat/requirements/*/
+.maat/skills/usage.json
+.maat/skills/proposals/**
+.maat/skills/archive/**
+.maat/lessons/**
+.maat/memo/**
+.maat/tasks/**
+.maat/events/**
+.maat/events.jsonl
+.maat/state.json
+.maat/compiled/**
+.maat/intake/**
+.maat/views/**
+.maat/graph/**
+.maat/maat.lock
+.maat/**/.maat-tmp-*
+# <<< Ma'at Git sharing

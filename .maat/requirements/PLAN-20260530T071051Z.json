@@ -1,0 +1,1998 @@
+{
+  "planId": "PLAN-20260530T071051Z",
+  "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+  "requirements": [
+    {
+      "id": "REQ-LOOP-001",
+      "kind": "REQ",
+      "title": "Core match flow and state machine",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §6-8\n\n#### Intent\nThe game runs a complete penalty match through explicit states: boot, ready, aiming, drawing, shot commit, ball flight, resolution, reset, and match end. Five shots per match, immediate restart.\n\n#### Rationale\nThe state machine is the gameplay backbone. Every system reads match phase to decide behavior. Without clean state transitions, nothing else works.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/match/**\n- src/core/state-machine.*\nlikelyTest:\n- src/systems/match/**/*.test.*\nforbidden:\n- renderer implementation\n- input capture logic\n\n#### Non-Goals\n- Do not implement sudden-death or tournament modes.\n- Do not add menu screens or navigation beyond restart.\n\n#### Acceptance Criteria\n- AC1 [must] Game transitions through states: boot → ready → aiming → drawing → shot_commit → ball_flight → resolution → reset → (aiming | match_end).\n- AC2 [must] Match ends after 5 shots or when result is mathematically decided before the fifth shot.\n- AC3 [must] Goal = player +1. Save or miss = goalkeeper +1.\n- AC4 [must] Player can restart from match_end with one action, no navigation required.\n- AC5 [must] shot_commit completes within 100ms. Resolution lasts 600-1200ms. Reset lasts 300-600ms.\n- AC6 [must] Invalid gesture in drawing returns to aiming without penalty or state corruption.\n- AC7 [must] Visibility loss transitions any active state to pause; restore returns to previous safe state.\n- AC8 [should] Player can take next shot within 1.8 seconds of a normal outcome.\n\n#### Proof Requirements\nminimum: L3\ncommands:\n- npx vitest run src/systems/match/\nmarkers:\n- PASS AC1\n- PASS AC2\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M1",
+        "PLAN-M4"
+      ],
+      "references": [
+        "src/systems/match/**",
+        "src/core/state-machine.*",
+        "src/systems/match/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Game transitions through states: boot → ready → aiming → drawing → shot_commit → ball_flight → resolution → reset → (aiming | match_end).",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Match ends after 5 shots or when result is mathematically decided before the fifth shot.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Goal = player +1. Save or miss = goalkeeper +1.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Player can restart from match_end with one action, no navigation required.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "shot_commit completes within 100ms. Resolution lasts 600-1200ms. Reset lasts 300-600ms.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Invalid gesture in drawing returns to aiming without penalty or state corruption.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Visibility loss transitions any active state to pause; restore returns to previous safe state.",
+          "priority": "must"
+        },
+        {
+          "id": "AC8",
+          "description": "Player can take next shot within 1.8 seconds of a normal outcome.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/match/"
+      ],
+      "minimumProofStrength": "L3",
+      "nonGoals": [
+        "Do not implement sudden-death or tournament modes.",
+        "Do not add menu screens or navigation beyond restart."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 113,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-INPUT-001",
+      "kind": "REQ",
+      "title": "Draw-to-shoot input system",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §9\n\n#### Intent\nThe player draws an upward path from the ball area toward the goal. The system captures the gesture, validates it, and shows a live trail during drawing.\n\n#### Rationale\nThe draw gesture is the core product differentiator (PILLAR-001). Input must feel responsive and forgiving.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/input/**\nlikelyTest:\n- src/systems/input/**/*.test.*\nforbidden:\n- gesture interpretation logic (REQ-SHOT-001)\n- ball trajectory logic\n\n#### Non-Goals\n- Do not implement gesture recording/replay.\n- Do not add gesture tutorial beyond first-use hint.\n\n#### Acceptance Criteria\n- AC1 [must] Touch, pointer, and mouse input are all captured.\n- AC2 [must] Gesture must start inside valid shot zone centered on ball with minimum radius 44 CSS px and recommended 12-16% viewport width.\n- AC3 [must] Gesture sampler enforces 4px minimum distance and 16ms minimum time interval between points with a maximum of 48 points per gesture.\n- AC4 [must] Gesture is valid only with ≥ 3 points, ≥ 28px total distance, final point ≥ 10px above start, and duration 50-1200ms.\n- AC5 [must] Invalid gesture returns to aiming without penalty.\n- AC6 [must] Live energy trail appears within same frame or next frame after input begins.\n- AC7 [must] Trail fades within 120-260ms after shot commit.\n- AC8 [should] Trail visually communicates curve direction and force without blocking goal visibility.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npx vitest run src/systems/input/\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M2"
+      ],
+      "references": [
+        "src/systems/input/**",
+        "src/systems/input/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Touch, pointer, and mouse input are all captured.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Gesture must start inside valid shot zone centered on ball with minimum radius 44 CSS px and recommended 12-16% viewport width.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Gesture sampler enforces 4px minimum distance and 16ms minimum time interval between points with a maximum of 48 points per gesture.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Gesture is valid only with ≥ 3 points, ≥ 28px total distance, final point ≥ 10px above start, and duration 50-1200ms.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Invalid gesture returns to aiming without penalty.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Live energy trail appears within same frame or next frame after input begins.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Trail fades within 120-260ms after shot commit.",
+          "priority": "must"
+        },
+        {
+          "id": "AC8",
+          "description": "Trail visually communicates curve direction and force without blocking goal visibility.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/input/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not implement gesture recording/replay.",
+        "Do not add gesture tutorial beyond first-use hint."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 160,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-SHOT-001",
+      "kind": "REQ",
+      "title": "Gesture interpretation into shot intent",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §10\n\n#### Intent\nThe raw gesture is interpreted into shot intent: target position, force, curve, gesture quality. The game does not replay the raw gesture literally.\n\n#### Rationale\nInterpretation is the bridge between player expression and ball behavior. It must feel fair: good gestures produce good shots, poor gestures reduce precision but never fully steal control.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/shot/**\nlikelyTest:\n- src/systems/shot/**/*.test.*\nforbidden:\n- input capture logic (REQ-INPUT-001)\n- ball trajectory logic (REQ-BALL-001)\n\n#### Non-Goals\n- Do not add shot assist modes.\n- Do not implement aim prediction visualization.\n\n#### Acceptance Criteria\n- AC1 [must] Interpreter outputs: targetX, targetY, force, curve, gestureQuality, durationMs, pathComplexity.\n- AC2 [must] Force derived from gesture speed, normalized and clamped to 0.55-1.35. Speed range: 0.25-1.20 CSS px/ms.\n- AC3 [must] Horizontal endpoint maps to goal width. Upward height maps to shot height. Target clamped inside or near goal frame.\n- AC4 [must] Curve extracted from lateral deviation using center-weighted offset, clamped -1 to 1. Reference width 110-140px.\n- AC5 [must] Gesture quality 0.0-1.0 based on jitter, reversals, length, speed. Minimum effective quality 0.35.\n- AC6 [must] Poor quality reduces precision but does not fully steal control. Small jitter is smoothed.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npx vitest run src/systems/shot/\nmarkers:\n- PASS AC2\n- PASS AC4\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M2"
+      ],
+      "references": [
+        "src/systems/shot/**",
+        "src/systems/shot/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Interpreter outputs: targetX, targetY, force, curve, gestureQuality, durationMs, pathComplexity.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Force derived from gesture speed, normalized and clamped to 0.55-1.35. Speed range: 0.25-1.20 CSS px/ms.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Horizontal endpoint maps to goal width. Upward height maps to shot height. Target clamped inside or near goal frame.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Curve extracted from lateral deviation using center-weighted offset, clamped -1 to 1. Reference width 110-140px.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Gesture quality 0.0-1.0 based on jitter, reversals, length, speed. Minimum effective quality 0.35.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Poor quality reduces precision but does not fully steal control. Small jitter is smoothed.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/shot/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not add shot assist modes.",
+        "Do not implement aim prediction visualization."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 204,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-BALL-001",
+      "kind": "REQ",
+      "title": "Ball trajectory and collision resolution",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: high\npriority: must\nsource: SRS §11\n\n#### Intent\nThe ball follows a curved arcade trajectory generated from shot intent, with depth illusion via scaling. Collisions are deterministic and resolve as goal, save, or miss.\n\n#### Rationale\nTrajectory and collision are the outcome engine. They must feel physically believable (arcade, not simulation) and be deterministic for fairness.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/ball/**\n- src/systems/collision/**\nlikelyTest:\n- src/systems/ball/**/*.test.*\n- src/systems/collision/**/*.test.*\nforbidden:\n- goalkeeper AI logic\n- FX/camera logic\n\n#### Non-Goals\n- Do not implement full rigid-body physics.\n- Do not add ball spin or wind.\n\n#### Acceptance Criteria\n- AC1 [must] Trajectory uses cubic Bézier from ball start to interpreted target, with curve offset applied to control points.\n- AC2 [must] Max curve offset 80-160px depending on viewport. Flight duration 450-850ms, higher force = shorter.\n- AC3 [must] Ball scales during flight: larger near shooter, smaller near goal.\n- AC4 [must] Collision is deterministic for same shot intent and same AI state.\n- AC5 [must] Ball inside goal and not saved = goal. Ball intersects keeper reach during save window = save. Ball outside goal frame = miss.\n- AC6 [must] Save visually shows keeper contact — no invisible-logic saves.\n- AC7 [must] Post/crossbar hits produce miss or rebound per tuning.\n- AC8 [should] Slight misses allowed outside goal frame when gesture quality is poor.\n\n#### Proof Requirements\nminimum: L3\ncommands:\n- npx vitest run src/systems/ball/ src/systems/collision/\nmarkers:\n- PASS AC4\n- PASS AC5\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M3"
+      ],
+      "references": [
+        "src/systems/ball/**",
+        "src/systems/collision/**",
+        "src/systems/ball/**/*.test.*",
+        "src/systems/collision/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Trajectory uses cubic Bézier from ball start to interpreted target, with curve offset applied to control points.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Max curve offset 80-160px depending on viewport. Flight duration 450-850ms, higher force = shorter.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Ball scales during flight: larger near shooter, smaller near goal.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Collision is deterministic for same shot intent and same AI state.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Ball inside goal and not saved = goal. Ball intersects keeper reach during save window = save. Ball outside goal frame = miss.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Save visually shows keeper contact — no invisible-logic saves.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Post/crossbar hits produce miss or rebound per tuning.",
+          "priority": "must"
+        },
+        {
+          "id": "AC8",
+          "description": "Slight misses allowed outside goal frame when gesture quality is poor.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/ball/ src/systems/collision/"
+      ],
+      "minimumProofStrength": "L3",
+      "nonGoals": [
+        "Do not implement full rigid-body physics.",
+        "Do not add ball spin or wind."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 249,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-GOALIE-001",
+      "kind": "REQ",
+      "title": "Goalkeeper AI with emotional behavior",
+      "description": "type: functional\nlane: T3_HIGH_RISK\nrisk: high\npriority: must\nsource: SRS §12\n\n#### Intent\nThe goalkeeper is an expressive semi-adaptive opponent with four AI layers (emotional, tactical, physical, animation), five mood states, tunable prediction and reaction, and readable saves.\n\n#### Rationale\nThe goalkeeper is the opponent. It must feel alive, fair, and emotionally responsive. The AI must never cheat in ways that invalidate valid player shots.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/goalkeeper/**\nlikelyTest:\n- src/systems/goalkeeper/**/*.test.*\nforbidden:\n- ball trajectory logic\n- camera/FX logic\n\n#### Non-Goals\n- Do not implement multiplayer goalkeeper control.\n- Do not add goalkeeper selection or customization.\n\n#### Acceptance Criteria\n- AC1 [must] AI operates through 4 layers: emotional (mood/tension), tactical (predict target/choose dive), physical (move/reach), animation (face/pose/recovery).\n- AC2 [must] 5 mood states with distinct visual and gameplay behavior: calm (baseline), focused (better reading), nervous (delayed reaction), aggressive (early commit, more wrong guesses), desperate (risky dives, high variance).\n- AC3 [must] Mood transitions driven by pressure, score lead/deficit, consecutive outcomes, and match point status per documented rules.\n- AC4 [must] Prediction accuracy depends on mood, difficulty, shot quality, and curve strength.\n- AC5 [must] Reaction timing ranges per mood: calm 140-190ms, focused 105-155ms, nervous 170-240ms, aggressive 80-130ms, desperate 70-180ms.\n- AC6 [must] Reach represented by body/hand animation, expands during dive peak, weaker when wrong-footed, never teleports.\n- AC7 [should] Goalkeeper appears to learn from repeated shot patterns (improved prediction on same direction, anticipation pose on repeat corner).\n\n#### Proof Requirements\nminimum: L3\ncommands:\n- npx vitest run src/systems/goalkeeper/\nmarkers:\n- PASS AC2\n- PASS AC5\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T3_HIGH_RISK",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M3"
+      ],
+      "references": [
+        "src/systems/goalkeeper/**",
+        "src/systems/goalkeeper/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "AI operates through 4 layers: emotional (mood/tension), tactical (predict target/choose dive), physical (move/reach), animation (face/pose/recovery).",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "5 mood states with distinct visual and gameplay behavior: calm (baseline), focused (better reading), nervous (delayed reaction), aggressive (early commit, more wrong guesses), desperate (risky dives, high variance).",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Mood transitions driven by pressure, score lead/deficit, consecutive outcomes, and match point status per documented rules.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Prediction accuracy depends on mood, difficulty, shot quality, and curve strength.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Reaction timing ranges per mood: calm 140-190ms, focused 105-155ms, nervous 170-240ms, aggressive 80-130ms, desperate 70-180ms.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Reach represented by body/hand animation, expands during dive peak, weaker when wrong-footed, never teleports.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Goalkeeper appears to learn from repeated shot patterns (improved prediction on same direction, anticipation pose on repeat corner).",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/goalkeeper/"
+      ],
+      "minimumProofStrength": "L3",
+      "nonGoals": [
+        "Do not implement multiplayer goalkeeper control.",
+        "Do not add goalkeeper selection or customization."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 297,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-PRESSURE-001",
+      "kind": "REQ",
+      "title": "Emotional pressure and hero moment detection",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §13, §37\n\n#### Intent\nA normalized pressure value (0-1) drives cinematic intensity. An escalation floor prevents flat early shots while respecting match context. Hero moments classify exceptional shots for maximum emphasis.\n\n#### Rationale\nPressure is the emotional engine. It makes the final shot feel dramatically different from the first. Hero moments reward exceptional play with cinematic payoff.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/pressure/**\n- src/systems/hero/**\nlikelyTest:\n- src/systems/pressure/**/*.test.*\n- src/systems/hero/**/*.test.*\nforbidden:\n- shot outcome logic\n- goalkeeper AI prediction\n\n#### Non-Goals\n- Do not let pressure force gameplay outcomes.\n- Do not add player-facing pressure meter UI.\n\n#### Acceptance Criteria\n- AC1 [must] Pressure = clamp(shotProgress×0.55 + scoreTension×0.25 + matchPointBonus + finalShotBonus, 0, 1).\n- AC2 [must] Escalation floor per shot (0.10, 0.18, 0.30, 0.45, 0.50) scaled by context multiplier. Decided matches get multiplier 0.3; close matches up to 1.0.\n- AC3 [must] Pressure affects mood, camera, FX, audio, trail brightness, UI urgency. Pressure never directly forces goal/save/miss.\n- AC4 [must] Hero moments detected: final_decider (final shot, score diff ≤1), near_save_goal (ball scores within 5% of keeper reach), fingertip_save (save in outer 15% of reach), extreme_curve_goal (|curve| ≥ 0.85 + goal), post_and_in (post contact + goal), wrong_foot_curve (keeper dives right direction but ball curves away and scores).\n- AC5 [must] Hero moments trigger enhanced camera/FX/audio but never change an already-resolved outcome.\n- AC6 [must] Hero moment result display: max 1000-1500ms vs normal 600-1200ms.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npx vitest run src/systems/pressure/ src/systems/hero/\nmarkers:\n- PASS AC1\n- PASS AC4\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M4"
+      ],
+      "references": [
+        "src/systems/pressure/**",
+        "src/systems/hero/**",
+        "src/systems/pressure/**/*.test.*",
+        "src/systems/hero/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Pressure = clamp(shotProgress×0.55 + scoreTension×0.25 + matchPointBonus + finalShotBonus, 0, 1).",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Escalation floor per shot (0.10, 0.18, 0.30, 0.45, 0.50) scaled by context multiplier. Decided matches get multiplier 0.3; close matches up to 1.0.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Pressure affects mood, camera, FX, audio, trail brightness, UI urgency. Pressure never directly forces goal/save/miss.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Hero moments detected: final_decider (final shot, score diff ≤1), near_save_goal (ball scores within 5% of keeper reach), fingertip_save (save in outer 15% of reach), extreme_curve_goal (|curve| ≥ 0.85 + goal), post_and_in (post contact + goal), wrong_foot_curve (keeper dives right direction but ball curves away and scores).",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Hero moments trigger enhanced camera/FX/audio but never change an already-resolved outcome.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Hero moment result display: max 1000-1500ms vs normal 600-1200ms.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/pressure/ src/systems/hero/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not let pressure force gameplay outcomes.",
+        "Do not add player-facing pressure meter UI."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 342,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-CINEMA-001",
+      "kind": "REQ",
+      "title": "Cinematic camera system",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §14\n\n#### Intent\nThe camera enhances gameplay through layered behaviors: base framing, ball tracking, tension zoom, impact shake, slow-motion pulse, and emotional focus. All driven by pressure.\n\n#### Rationale\nMicro-cinematics (PILLAR-004) make the match feel like a sports broadcast. Camera intensity must scale with drama without interrupting flow.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/camera/**\nlikelyTest:\n- src/systems/camera/**/*.test.*\nforbidden:\n- gameplay state mutation\n- collision logic\n\n#### Non-Goals\n- Do not implement replay camera.\n- Do not add user-controlled camera.\n\n#### Acceptance Criteria\n- AC1 [must] Camera supports 6 layers: base framing, ball tracking, tension zoom, impact shake, slow-motion pulse, emotional focus.\n- AC2 [must] Zoom range 1.00 normal to max 1.12. Zoom never crops ball, keeper, or goal frame.\n- AC3 [must] Ball tracking strength scales with pressure: low 0.05-0.10, medium 0.10-0.18, high 0.18-0.30.\n- AC4 [must] Shake duration: light 80-140ms, strong 160-260ms, final-shot max 350ms.\n- AC5 [must] Slow-motion triggers only on final shot, match point, near save, or post contact. Duration 180-450ms, time scale 0.35-0.70. Does not trigger every shot.\n- AC6 [must] Camera interpolated with exponential damping: position damping 8-14, zoom damping 6-10.\n- AC7 [should] Slow-motion does not delay reset beyond acceptable pacing.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/systems/camera/\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M5"
+      ],
+      "references": [
+        "src/systems/camera/**",
+        "src/systems/camera/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Camera supports 6 layers: base framing, ball tracking, tension zoom, impact shake, slow-motion pulse, emotional focus.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Zoom range 1.00 normal to max 1.12. Zoom never crops ball, keeper, or goal frame.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Ball tracking strength scales with pressure: low 0.05-0.10, medium 0.10-0.18, high 0.18-0.30.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Shake duration: light 80-140ms, strong 160-260ms, final-shot max 350ms.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Slow-motion triggers only on final shot, match point, near save, or post contact. Duration 180-450ms, time scale 0.35-0.70. Does not trigger every shot.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Camera interpolated with exponential damping: position damping 8-14, zoom damping 6-10.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Slow-motion does not delay reset beyond acceptable pacing.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/camera/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not implement replay camera.",
+        "Do not add user-controlled camera."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 389,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-FX-001",
+      "kind": "REQ",
+      "title": "Visual effects system",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §15\n\n#### Intent\nProcedural-first, pool-based FX system for ball trail, drawing trail, goal/save/miss impacts, screen-space effects, and hit stop. Intensity scales with pressure and hero moments.\n\n#### Rationale\nFX make shots feel powerful and outcomes feel dramatic. They must enhance readability, not obscure it.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/fx/**\nlikelyTest:\n- src/systems/fx/**/*.test.*\nforbidden:\n- gameplay outcome logic\n- collision detection\n\n#### Non-Goals\n- Do not implement sprite-based confetti or branded celebration for MVP.\n- Do not add FX settings menu.\n\n#### Acceptance Criteria\n- AC1 [must] FX system is procedural-first and pool-based. FX read gameplay state but never decide outcomes.\n- AC2 [must] Ball trail during flight: 180-450ms lifetime, opacity decreases with age, width scales with force/pressure, draws behind ball.\n- AC3 [must] Goal FX: net pulse/stretch + ball impact burst, scaled by shot importance. Hero goal gets extended net ripple.\n- AC4 [must] Save FX: contact spark/burst + ball deflection, originating at visual contact point. Contact burst 120-220ms.\n- AC5 [must] Miss FX quieter than goal/save unless post/crossbar hit.\n- AC6 [must] Screen effects (vignette, flash) do not obscure ball or goal frame. Disabled or reduced in reduced-motion and low-end modes.\n- AC7 [should] Hit stop 40-90ms on strong saves, post hits, or decisive goals. Must not make input feel delayed.\n- AC8 [should] Low-end devices can reduce FX density without changing gameplay.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/systems/fx/\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M5"
+      ],
+      "references": [
+        "src/systems/fx/**",
+        "src/systems/fx/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "FX system is procedural-first and pool-based. FX read gameplay state but never decide outcomes.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Ball trail during flight: 180-450ms lifetime, opacity decreases with age, width scales with force/pressure, draws behind ball.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Goal FX: net pulse/stretch + ball impact burst, scaled by shot importance. Hero goal gets extended net ripple.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Save FX: contact spark/burst + ball deflection, originating at visual contact point. Contact burst 120-220ms.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Miss FX quieter than goal/save unless post/crossbar hit.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Screen effects (vignette, flash) do not obscure ball or goal frame. Disabled or reduced in reduced-motion and low-end modes.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Hit stop 40-90ms on strong saves, post hits, or decisive goals. Must not make input feel delayed.",
+          "priority": "should"
+        },
+        {
+          "id": "AC8",
+          "description": "Low-end devices can reduce FX density without changing gameplay.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/fx/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not implement sprite-based confetti or branded celebration for MVP.",
+        "Do not add FX settings menu."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 431,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-ANIM-001",
+      "kind": "REQ",
+      "title": "Goalkeeper animation and emotional display",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §16\n\n#### Intent\nThe goalkeeper has full animation support for gameplay actions and emotional overlays that reflect mood state through facial expression and body language.\n\n#### Rationale\nThe goalkeeper must feel alive (PILLAR-003). Animation must align with gameplay collision results — visual and logic must never contradict.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/animation/**\n- src/assets/goalkeeper/**\nlikelyTest:\n- src/systems/animation/**/*.test.*\nforbidden:\n- AI decision logic\n- collision logic\n\n#### Non-Goals\n- Do not implement full skeletal runtime animation for MVP.\n- Do not add goalkeeper skin/costume selection.\n\n#### Acceptance Criteria\n- AC1 [must] Goalkeeper supports animations: idle, focus stance, nervous stance, pre-dive anticipation, dive left/right/center, save contact, miss reaction, goal conceded, reset.\n- AC2 [must] Facial expressions reflect mood: eye shape, brow angle, mouth expression, and body tension change per mood state.\n- AC3 [must] Dive animation aligns with gameplay reach timing. Animation shows save only when collision resolves save. Animation shows failure only when collision resolves goal.\n- AC4 [must] No long non-interactive celebration animations during normal flow. Readability over realism.\n- AC5 [should] MVP uses sprite-sheet or lightweight rig for body, procedural overlays for facial emotion, procedural squash/stretch for dive impact.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/systems/animation/\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M3"
+      ],
+      "references": [
+        "src/systems/animation/**",
+        "src/assets/goalkeeper/**",
+        "src/systems/animation/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Goalkeeper supports animations: idle, focus stance, nervous stance, pre-dive anticipation, dive left/right/center, save contact, miss reaction, goal conceded, reset.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Facial expressions reflect mood: eye shape, brow angle, mouth expression, and body tension change per mood state.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Dive animation aligns with gameplay reach timing. Animation shows save only when collision resolves save. Animation shows failure only when collision resolves goal.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "No long non-interactive celebration animations during normal flow. Readability over realism.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "MVP uses sprite-sheet or lightweight rig for body, procedural overlays for facial emotion, procedural squash/stretch for dive impact.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/animation/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not implement full skeletal runtime animation for MVP.",
+        "Do not add goalkeeper skin/costume selection."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 474,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-UI-001",
+      "kind": "REQ",
+      "title": "In-game UI and outcome clarity",
+      "description": "type: functional\nlane: T1_MICRO\nrisk: low\npriority: must\nsource: SRS §17, §24\n\n#### Intent\nMinimal in-game UI displays score, shot count, match result, and restart action. Outcomes (goal, save, miss) are clearly distinguishable within 500ms of resolution.\n\n#### Rationale\nUI must inform without cluttering. The player must always understand what happened and what to do next.\n\n#### Scope Hints\nlikelyEdit:\n- src/ui/**\nlikelyTest:\n- src/ui/**/*.test.*\nforbidden:\n- gameplay logic\n- camera/FX logic\n\n#### Non-Goals\n- Do not add settings screens or menus for MVP.\n- Do not display long instructions during active play.\n\n#### Acceptance Criteria\n- AC1 [must] UI displays: player score, goalkeeper score, current shot number, match result text, restart action.\n- AC2 [must] UI does not cover ball start zone, goal corners, goalkeeper body, or gesture drawing path.\n- AC3 [must] Goal clearly shows: ball crossing into goal + net feedback + positive score update.\n- AC4 [must] Save clearly shows: keeper contact/reach + ball deflection/stop + save feedback.\n- AC5 [must] Miss clearly shows: ball outside frame or post hit + distinct feedback from save.\n- AC6 [must] Player understands outcome within 500ms of resolution.\n- AC7 [should] First-use hint (\"Draw your shot\" or Arabic equivalent) shown, disappears after first valid gesture.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/ui/\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T1_MICRO",
+      "risk": "low",
+      "planIds": [
+        "PLAN-M5"
+      ],
+      "references": [
+        "src/ui/**",
+        "src/ui/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "UI displays: player score, goalkeeper score, current shot number, match result text, restart action.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "UI does not cover ball start zone, goal corners, goalkeeper body, or gesture drawing path.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Goal clearly shows: ball crossing into goal + net feedback + positive score update.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Save clearly shows: keeper contact/reach + ball deflection/stop + save feedback.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Miss clearly shows: ball outside frame or post hit + distinct feedback from save.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Player understands outcome within 500ms of resolution.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "First-use hint (\"Draw your shot\" or Arabic equivalent) shown, disappears after first valid gesture.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/ui/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not add settings screens or menus for MVP.",
+        "Do not display long instructions during active play."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 515,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-SCREEN-001",
+      "kind": "REQ",
+      "title": "Mobile game screen inventory and composition",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: original SRS §4, §17, §22, §24\n\n#### Intent\nThe game uses a small set of mobile-first screens and overlays that keep the player inside the penalty experience with no heavy navigation.\n\n#### Rationale\nA mobile football penalty game must be instantly playable. Screen composition must protect the ball zone, goal corners, goalkeeper body, score clarity, and restart flow.\n\n#### Scope Hints\nlikelyEdit:\n- src/ui/**\n- src/scenes/**\n- src/core/layout.*\nlikelyTest:\n- src/ui/**/*.test.*\n- src/tests/mobile/**\nforbidden:\n- long menu navigation before first shot\n- UI covering the ball start zone\n- DOM overlays for active gameplay controls\n\n#### Non-Goals\n- Do not implement a full multi-screen menu system in MVP.\n- Do not add store, profile, leaderboard, tournament, or account navigation.\n- Do not move active gameplay controls outside the Phaser canvas.\n- Do not redesign the game around landscape-first composition.\n\n#### Screen Inventory\n| Screen / Overlay | State | Required Elements | Performance Notes |\n|---|---|---|---|\n| Boot / Loading | boot | loading indicator, critical asset progress | load only critical assets before ready |\n| Ready / Aiming | ready, aiming | ball, goal, goalkeeper, score, shot count, short hint | no heavy animation loop beyond idle |\n| Drawing | drawing | live trail, ball zone feedback | no allocations per pointer event |\n| Ball Flight | ball_flight | ball, keeper, trail, camera/FX | single canvas, pooled FX only |\n| Result Overlay | resolution | goal/save/miss text, score update | max normal display 600-1200ms |\n| Reset | reset | quick repositioning | no long celebration lock |\n| Match End | match_end | final score, restart action | one action restart |\n| Pause / Restore | pause | paused/safe state | no score corruption after resume |\n\n#### Acceptance Criteria\n- AC1 [must] All required screens/overlays are reachable through the documented state machine.\n- AC2 [must] Active gameplay controls are rendered inside the Phaser canvas, not as DOM-heavy overlays.\n- AC3 [must] UI never covers the valid shot zone, goal corners, goalkeeper save area, or drawing path.\n- AC4 [must] Player can reach first aiming state after critical assets load without menu navigation.\n- AC5 [must] Restart from match end requires one clear action.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npx vitest run src/ui/ src/tests/mobile/",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M7"
+      ],
+      "references": [
+        "src/ui/**",
+        "src/scenes/**",
+        "src/core/layout.*",
+        "src/ui/**/*.test.*",
+        "src/tests/mobile/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "All required screens/overlays are reachable through the documented state machine.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Active gameplay controls are rendered inside the Phaser canvas, not as DOM-heavy overlays.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "UI never covers the valid shot zone, goal corners, goalkeeper save area, or drawing path.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Player can reach first aiming state after critical assets load without menu navigation.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Restart from match end requires one clear action.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/ui/ src/tests/mobile/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not implement a full multi-screen menu system in MVP.",
+        "Do not add store, profile, leaderboard, tournament, or account navigation.",
+        "Do not move active gameplay controls outside the Phaser canvas.",
+        "Do not redesign the game around landscape-first composition."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 559,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-ASSET-001",
+      "kind": "REQ",
+      "title": "Asset and audio manifest for mobile production",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: original SRS §18, §21, §23\n\n#### Intent\nThe vendor must deliver a clear asset and audio manifest so the game can be optimized for mobile WebView instead of relying on uncontrolled placeholder or oversized files.\n\n#### Rationale\nPerformance cannot be guaranteed if art and audio files are unmanaged. The manifest defines critical assets, optional polish, memory budget, load order, and fallback behavior.\n\n#### Scope Hints\nlikelyEdit:\n- src/assets/**\n- src/core/assets.*\n- public/assets/**\nlikelyTest:\n- src/tests/performance/**\nforbidden:\n- large uncompressed images in critical path\n- loading optional cosmetics before first playable state\n- audio loading blocking gameplay\n\n#### Non-Goals\n- Do not require final brand art, final character polish, or final sound mix for MVP acceptance.\n- Do not include monetization cosmetics, skin shop assets, replay export assets, or event-specific art in MVP.\n- Do not block first playable state on optional stadium polish, advanced cinematic FX, or non-critical audio.\n- Do not use this requirement as approval for oversized production assets outside the stated budgets.\n\n#### Required Asset Groups\n| Group | Examples | Load Priority | Requirement |\n|---|---|---:|---|\n| Critical Gameplay | ball, goal frame, net layers, goalkeeper core poses, score UI | 1 | must load before ready |\n| Input / Shot FX | drawing trail, ball trail, contact marker | 2 | procedural or atlas-backed |\n| Goalkeeper Emotion | face overlays, mood eyes/brows/mouth, pose variants | 3 | may stream after first playable if placeholders exist |\n| Stadium | background, crowd, field, sky | 4 | optimized texture atlas, no huge background before ready |\n| Cinematic FX | vignette, flash, hero particles, net ripple highlights | 5 | reduced in low-end mode |\n| Audio | kick, whoosh, goal, save, post, crowd, tension swell | 6 | unlock after user gesture, never block play |\n\n#### Acceptance Criteria\n- AC1 [must] Repository includes an asset manifest listing file name, group, dimensions, compressed size, load priority, and critical/optional status.\n- AC2 [must] Critical first-play assets are separated from optional polish assets.\n- AC3 [must] Gameplay sprites use texture atlases where practical to reduce texture switches.\n- AC4 [must] Audio has fallback behavior if unlock or playback fails.\n- AC5 [must] Missing optional polish assets do not prevent a complete five-shot match.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npm run build\n- npx vitest run src/tests/performance/\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M7"
+      ],
+      "references": [
+        "src/assets/**",
+        "src/core/assets.*",
+        "public/assets/**",
+        "src/tests/performance/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Repository includes an asset manifest listing file name, group, dimensions, compressed size, load priority, and critical/optional status.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Critical first-play assets are separated from optional polish assets.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Gameplay sprites use texture atlases where practical to reduce texture switches.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Audio has fallback behavior if unlock or playback fails.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Missing optional polish assets do not prevent a complete five-shot match.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npm run build",
+        "npx vitest run src/tests/performance/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not require final brand art, final character polish, or final sound mix for MVP acceptance.",
+        "Do not include monetization cosmetics, skin shop assets, replay export assets, or event-specific art in MVP.",
+        "Do not block first playable state on optional stadium polish, advanced cinematic FX, or non-critical audio.",
+        "Do not use this requirement as approval for oversized production assets outside the stated budgets."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 616,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-AUDIO-001",
+      "kind": "REQ",
+      "title": "Adaptive audio system",
+      "description": "type: functional\nlane: T2_STANDARD\nrisk: low\npriority: must\nsource: SRS §18\n\n#### Intent\nAudio acts as an emotional amplifier with pressure-scaled intensity. Uses Phaser Sound by default, with Howler.js allowed only as an explicit optional replacement if Phaser Sound proves insufficient. Audio failure must never block gameplay.\n\n#### Rationale\nSound makes goals feel powerful and near-saves feel tense. Adaptive audio transforms the match from flat repetition into escalating drama.\n\n#### Scope Hints\nlikelyEdit:\n- src/systems/audio/**\nlikelyTest:\n- src/systems/audio/**/*.test.*\nforbidden:\n- gameplay logic\n- collision logic\n\n#### Non-Goals\n- Do not implement full music score for MVP.\n- Do not add audio settings UI beyond mute.\n\n#### Acceptance Criteria\n- AC1 [must] Audio events: kick, ball whoosh, curve/air, goal net impact, save impact, post impact, crowd reaction, tension swell.\n- AC2 [must] Audio intensity scales with pressure: low pressure = light ambience; high pressure = stronger crowd, tighter whoosh, higher impact; final shot = tension swell + crowd anticipation.\n- AC3 [must] Audio initializes only after user interaction (Web Audio autoplay policy).\n- AC4 [must] If audio fails to initialize, game remains fully playable — no blocked input, rendering, or match progression.\n- AC5 [must] Kick sound triggers immediately on shot commit. Tension loops fade in/out, never restart abruptly.\n- AC6 [should] Result sounds do not delay gameplay reset.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/systems/audio/\n\n---",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T2_STANDARD",
+      "risk": "low",
+      "planIds": [
+        "PLAN-M5"
+      ],
+      "references": [
+        "src/systems/audio/**",
+        "src/systems/audio/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Audio events: kick, ball whoosh, curve/air, goal net impact, save impact, post impact, crowd reaction, tension swell.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Audio intensity scales with pressure: low pressure = light ambience; high pressure = stronger crowd, tighter whoosh, higher impact; final shot = tension swell + crowd anticipation.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Audio initializes only after user interaction (Web Audio autoplay policy).",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "If audio fails to initialize, game remains fully playable — no blocked input, rendering, or match progression.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Kick sound triggers immediately on shot commit. Tension loops fade in/out, never restart abruptly.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Result sounds do not delay gameplay reset.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/systems/audio/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not implement full music score for MVP.",
+        "Do not add audio settings UI beyond mute."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 672,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "REQ-BALANCE-001",
+      "kind": "REQ",
+      "title": "Difficulty, fairness, and anti-frustration",
+      "description": "type: functional\nlane: T3_HIGH_RISK\nrisk: high\npriority: must\nsource: SRS §19\n\n#### Intent\nDifficulty is tunable via data-driven presets. The game is fair: no forced outcomes, no invisible saves, no stolen shots. Anti-frustration patterns ensure fast retry and clear feedback.\n\n#### Rationale\nFairness is a pillar (PILLAR-002). Players must trust the system. Difficulty must scale through visible goalkeeper behavior, not hidden manipulation.\n\n#### Scope Hints\nlikelyEdit:\n- src/config/difficulty.*\n- src/systems/goalkeeper/**\nlikelyTest:\n- src/config/**/*.test.*\nforbidden:\n- collision resolution logic changes\n- FX/camera logic\n\n#### Non-Goals\n- Do not implement competitive/ranked difficulty modes.\n- Do not add difficulty selection UI for MVP (use single default preset).\n\n#### Acceptance Criteria\n- AC1 [must] Difficulty tunable via: prediction error, reaction time, reach radius, wrong-commit chance, shot quality tolerance, curve difficulty multiplier.\n- AC2 [must] Presets stored as data configuration, not hard-coded logic. Changing values does not require rewriting algorithms.\n- AC3 [must] Game never forces a miss on a valid high-quality shot.\n- AC4 [must] Game never forces an impossible save for drama.\n- AC5 [must] Target never changes after shot commit except through documented quality/error rules.\n- AC6 [must] Controlled variation (reaction timing, prediction offset, animation variant) is bounded, seedable, and visible through behavior.\n- AC7 [must] Same shot intent + same AI seed = same outcome (deterministic).\n- AC8 [should] Goalkeeper skill multiplier increases per shot (0.85, 0.95, 1.00, 1.05, 1.10).\n- AC9 [should] Anti-frustration: forgiving input detection, clear save contact, clear miss reason, fast retry, no long failure animations.\n\n#### Proof Requirements\nminimum: L3\ncommands:\n- npx vitest run src/config/ src/systems/goalkeeper/\nmarkers:\n- PASS AC3\n- PASS AC7",
+      "priority": "critical",
+      "category": "functional",
+      "lane": "T3_HIGH_RISK",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M4"
+      ],
+      "references": [
+        "src/config/difficulty.*",
+        "src/systems/goalkeeper/**",
+        "src/config/**/*.test.*"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Difficulty tunable via: prediction error, reaction time, reach radius, wrong-commit chance, shot quality tolerance, curve difficulty multiplier.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Presets stored as data configuration, not hard-coded logic. Changing values does not require rewriting algorithms.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Game never forces a miss on a valid high-quality shot.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Game never forces an impossible save for drama.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Target never changes after shot commit except through documented quality/error rules.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Controlled variation (reaction timing, prediction offset, animation variant) is bounded, seedable, and visible through behavior.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Same shot intent + same AI seed = same outcome (deterministic).",
+          "priority": "must"
+        },
+        {
+          "id": "AC8",
+          "description": "Goalkeeper skill multiplier increases per shot (0.85, 0.95, 1.00, 1.05, 1.10).",
+          "priority": "should"
+        },
+        {
+          "id": "AC9",
+          "description": "Anti-frustration: forgiving input detection, clear save contact, clear miss reason, fast retry, no long failure animations.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/config/ src/systems/goalkeeper/"
+      ],
+      "minimumProofStrength": "L3",
+      "nonGoals": [
+        "Do not implement competitive/ranked difficulty modes.",
+        "Do not add difficulty selection UI for MVP (use single default preset)."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 713,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "NFR-PERF-001",
+      "kind": "NFR",
+      "title": "Runtime performance and memory",
+      "description": "type: non-functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §21\n\n#### Scope Hints\nlikelyEdit:\n- src/core/game-loop.*\n- src/systems/fx/**\nlikelyTest:\n- src/tests/performance/**\nforbidden:\n- gameplay logic changes for performance\n\n#### Non-Goals\n- Do not add GPU profiling UI.\n- Do not implement dynamic quality auto-detection for MVP.\n\n#### Acceptance Criteria\n- AC1 [must] 60 FPS during active gameplay on target devices.\n- AC2 [must] 45 FPS minimum on lower-end devices with reduced FX.\n- AC3 [must] Object pooling for trail points, particles, impact effects, temporary visual markers.\n- AC4 [must] Single canvas. No multiple canvas layers unless measured performance need exists.\n- AC5 [should] Particle count: 20-60 normal shots, max 120 hero moments.\n- AC6 [should] Initial critical texture memory under 32MB. Total active under 64MB on mid-range mobile.\n\n#### Proof Requirements\nminimum: L3\ncommands:\n- npx vitest run src/tests/performance/\n\n---",
+      "priority": "critical",
+      "category": "non-functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M6"
+      ],
+      "references": [
+        "src/core/game-loop.*",
+        "src/systems/fx/**",
+        "src/tests/performance/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "60 FPS during active gameplay on target devices.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "45 FPS minimum on lower-end devices with reduced FX.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Object pooling for trail points, particles, impact effects, temporary visual markers.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Single canvas. No multiple canvas layers unless measured performance need exists.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Particle count: 20-60 normal shots, max 120 hero moments.",
+          "priority": "should"
+        },
+        {
+          "id": "AC6",
+          "description": "Initial critical texture memory under 32MB. Total active under 64MB on mid-range mobile.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/tests/performance/"
+      ],
+      "minimumProofStrength": "L3",
+      "nonGoals": [
+        "Do not add GPU profiling UI.",
+        "Do not implement dynamic quality auto-detection for MVP."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 761,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "NFR-PERF-002",
+      "kind": "NFR",
+      "title": "Mobile WebView performance gates",
+      "description": "type: non-functional\nlane: T2_STANDARD\nrisk: high\npriority: must\nsource: original SRS §4, §21, §22, §23\n\n#### Scope Hints\nlikelyEdit:\n- src/core/game-loop.*\n- src/core/performance.*\n- src/systems/fx/**\n- src/scenes/**\nlikelyTest:\n- src/tests/performance/**\n- src/tests/mobile/**\nforbidden:\n- per-frame allocations in hot paths\n- creating/destroying Phaser GameObjects during ball flight\n- unbounded particles or trail segments\n- full-screen expensive effects every shot\n- DOM layout reads/writes during active gameplay\n\n#### Intent\nThe game must behave as a high-performance mobile football game. Smooth input and stable WebView runtime are release gates, not optional polish.\n\n#### Non-Goals\n- Do not guarantee 60 FPS on every possible phone, browser, or WebView outside the approved device matrix.\n- Do not replace gameplay fairness, fixed-step simulation, or input responsiveness to hide performance problems.\n- Do not implement a full in-game GPU profiler or developer overlay in MVP.\n- Do not optimize by removing required outcome clarity, save readability, or valid input feedback.\n\n#### Acceptance Criteria\n- AC1 [must] Active gameplay targets 60 FPS on approved target devices and never accepts performance regressions below the defined budget without documented low-end fallback.\n- AC2 [must] Low-end mode maintains at least 45 FPS by reducing FX, background motion, shake, flash, and particle density before reducing input responsiveness.\n- AC3 [must] Drawing input feedback appears same frame or next frame, even when low-end mode is active.\n- AC4 [must] Ball flight and collision remain fixed-step and deterministic even when render FPS fluctuates.\n- AC5 [must] Normal shots use 20-60 active particles; hero moments are capped at 120 active particles.\n- AC6 [must] Trail points, particles, impact markers, and temporary vectors use pooling or reusable buffers in hot paths.\n- AC7 [must] Performance warnings are recorded when catch-up steps are dropped repeatedly or frame time exceeds thresholds.\n\n#### Proof Requirements\nminimum: L3\ncommands:\n- npx vitest run src/tests/performance/ src/tests/mobile/\nmarkers:\n- PASS FPS_TARGET\n- PASS LOW_END_FALLBACK\n- PASS NO_HOT_PATH_ALLOCATION",
+      "priority": "critical",
+      "category": "non-functional",
+      "lane": "T2_STANDARD",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M7"
+      ],
+      "references": [
+        "src/core/game-loop.*",
+        "src/core/performance.*",
+        "src/systems/fx/**",
+        "src/scenes/**",
+        "src/tests/performance/**",
+        "src/tests/mobile/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Active gameplay targets 60 FPS on approved target devices and never accepts performance regressions below the defined budget without documented low-end fallback.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Low-end mode maintains at least 45 FPS by reducing FX, background motion, shake, flash, and particle density before reducing input responsiveness.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Drawing input feedback appears same frame or next frame, even when low-end mode is active.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Ball flight and collision remain fixed-step and deterministic even when render FPS fluctuates.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Normal shots use 20-60 active particles; hero moments are capped at 120 active particles.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Trail points, particles, impact markers, and temporary vectors use pooling or reusable buffers in hot paths.",
+          "priority": "must"
+        },
+        {
+          "id": "AC7",
+          "description": "Performance warnings are recorded when catch-up steps are dropped repeatedly or frame time exceeds thresholds.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/tests/performance/ src/tests/mobile/"
+      ],
+      "minimumProofStrength": "L3",
+      "nonGoals": [
+        "Do not guarantee 60 FPS on every possible phone, browser, or WebView outside the approved device matrix.",
+        "Do not replace gameplay fairness, fixed-step simulation, or input responsiveness to hide performance problems.",
+        "Do not implement a full in-game GPU profiler or developer overlay in MVP.",
+        "Do not optimize by removing required outcome clarity, save readability, or valid input feedback."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 798,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "NFR-BUNDLE-001",
+      "kind": "NFR",
+      "title": "Bundle, texture, and first-play budgets",
+      "description": "type: non-functional\nlane: T2_STANDARD\nrisk: high\npriority: must\nsource: original SRS §21, §23\n\n#### Scope Hints\nlikelyEdit:\n- vite.config.*\n- src/core/assets.*\n- src/scenes/BootScene.*\n- public/assets/**\nlikelyTest:\n- src/tests/performance/**\nforbidden:\n- loading all production art before first playable state\n- large uncompressed PNG/JPG files without justification\n- runtime texture generation during shot flight\n- unused assets in critical bundle\n\n#### Non-Goals\n- Do not require a CDN, remote asset service, or backend asset pipeline for MVP.\n- Do not require final compressed production art before gameplay acceptance tests pass.\n- Do not force all assets into one bundle; staged loading is allowed and preferred for mobile performance.\n- Do not include optional cosmetics, monetization assets, or unused art in the critical first-play bundle.\n\n#### Acceptance Criteria\n- AC1 [must] First playable state loads only critical gameplay assets: ball, goal, keeper core, UI essentials, and basic trail/impact FX.\n- AC2 [must] Initial critical texture memory target is 16-32MB; active mid-range mobile texture memory target is under 64MB.\n- AC3 [must] Device pixel ratio is capped at 2.0 unless measured performance proves a higher cap is safe.\n- AC4 [must] Production build reports asset sizes and flags oversized critical assets.\n- AC5 [must] Optional stadium polish, advanced cinematic FX, and cosmetics can be delayed until after first playable state.\n- AC6 [should] Texture atlases are used for keeper, goal, UI, and FX groups where practical.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npm run build\n- npx vitest run src/tests/performance/",
+      "priority": "critical",
+      "category": "non-functional",
+      "lane": "T2_STANDARD",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M7"
+      ],
+      "references": [
+        "vite.config.*",
+        "src/core/assets.*",
+        "src/scenes/BootScene.*",
+        "public/assets/**",
+        "src/tests/performance/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "First playable state loads only critical gameplay assets: ball, goal, keeper core, UI essentials, and basic trail/impact FX.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Initial critical texture memory target is 16-32MB; active mid-range mobile texture memory target is under 64MB.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Device pixel ratio is capped at 2.0 unless measured performance proves a higher cap is safe.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Production build reports asset sizes and flags oversized critical assets.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Optional stadium polish, advanced cinematic FX, and cosmetics can be delayed until after first playable state.",
+          "priority": "must"
+        },
+        {
+          "id": "AC6",
+          "description": "Texture atlases are used for keeper, goal, UI, and FX groups where practical.",
+          "priority": "should"
+        }
+      ],
+      "proofCommands": [
+        "npm run build",
+        "npx vitest run src/tests/performance/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not require a CDN, remote asset service, or backend asset pipeline for MVP.",
+        "Do not require final compressed production art before gameplay acceptance tests pass.",
+        "Do not force all assets into one bundle; staged loading is allowed and preferred for mobile performance.",
+        "Do not include optional cosmetics, monetization assets, or unused art in the critical first-play bundle."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 848,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "NFR-DEVICE-001",
+      "kind": "NFR",
+      "title": "Device and browser acceptance matrix",
+      "description": "type: non-functional\nlane: T2_STANDARD\nrisk: high\npriority: must\nsource: original SRS §4, §22, §30\n\n#### Scope Hints\nlikelyEdit:\n- docs/qa/**\n- src/tests/mobile/**\nlikelyTest:\n- src/tests/mobile/**\nforbidden:\n- accepting desktop-only QA as mobile-ready\n- skipping WebView verification\n\n#### Non-Goals\n- Do not certify every historical OS/browser/WebView version outside the approved matrix.\n- Do not require native iOS or Android wrappers in MVP.\n- Do not accept emulator-only QA as proof for real mobile readiness.\n- Do not add platform-specific gameplay rules that change fairness between devices.\n\n#### Acceptance Matrix\n| Target | Minimum Acceptance |\n|---|---|\n| Android Chrome | complete match, 60 FPS target, touch safe, audio unlock works |\n| Android WebView | complete match, no scroll interference, pause/resume safe |\n| iOS Safari | complete match, safe areas respected, audio unlock works |\n| iOS in-app WebView | complete match, visibility/background safe |\n| Desktop browser | QA support for mouse/pointer and deterministic tests |\n| 320px viewport | playable portrait layout, no blocked ball or goal |\n| Low-end mode | 45 FPS minimum target with reduced FX |\n\n#### Acceptance Criteria\n- AC1 [must] Vendor QA report includes results for all targets in the matrix.\n- AC2 [must] Any unsupported target is listed with reason, impact, and mitigation.\n- AC3 [must] WebView pause, app background, tab hidden, resize, and orientation change do not corrupt match score.\n- AC4 [must] Page scroll and browser gesture interference are prevented during active play.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npx vitest run src/tests/mobile/\n\n---",
+      "priority": "critical",
+      "category": "non-functional",
+      "lane": "T2_STANDARD",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M7"
+      ],
+      "references": [
+        "docs/qa/**",
+        "src/tests/mobile/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Vendor QA report includes results for all targets in the matrix.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Any unsupported target is listed with reason, impact, and mitigation.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "WebView pause, app background, tab hidden, resize, and orientation change do not corrupt match score.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Page scroll and browser gesture interference are prevented during active play.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/tests/mobile/"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not certify every historical OS/browser/WebView version outside the approved matrix.",
+        "Do not require native iOS or Android wrappers in MVP.",
+        "Do not accept emulator-only QA as proof for real mobile readiness.",
+        "Do not add platform-specific gameplay rules that change fairness between devices."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 890,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "NFR-MOBILE-001",
+      "kind": "NFR",
+      "title": "Mobile WebView compatibility",
+      "description": "type: non-functional\nlane: T2_STANDARD\nrisk: medium\npriority: must\nsource: SRS §4, §22\n\n#### Scope Hints\nlikelyEdit:\n- src/core/renderer.*\n- src/core/lifecycle.*\nlikelyTest:\n- src/tests/mobile/**\nforbidden:\n- gameplay logic changes\n\n#### Non-Goals\n- Do not implement native app wrapper.\n- Do not add landscape-first layout.\n\n#### Acceptance Criteria\n- AC1 [must] Portrait-first layout. Supports viewport widths down to 320 CSS px.\n- AC2 [must] Safe areas respected: no UI overlap with camera notch, home indicator, or system gesture areas.\n- AC3 [must] Device pixel ratio capped at 2.0 unless testing proves higher is safe.\n- AC4 [must] Page scroll and browser gesture interference prevented during play.\n- AC5 [must] Handles: tab hidden, WebView pause, app background, orientation change, resize. Restores to safe state without corrupting match score.\n\n#### Proof Requirements\nminimum: L3\ncommands:\n- npx vitest run src/tests/mobile/\n\n---",
+      "priority": "critical",
+      "category": "non-functional",
+      "lane": "T2_STANDARD",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M6"
+      ],
+      "references": [
+        "src/core/renderer.*",
+        "src/core/lifecycle.*",
+        "src/tests/mobile/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Portrait-first layout. Supports viewport widths down to 320 CSS px.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Safe areas respected: no UI overlap with camera notch, home indicator, or system gesture areas.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Device pixel ratio capped at 2.0 unless testing proves higher is safe.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Page scroll and browser gesture interference prevented during play.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Handles: tab hidden, WebView pause, app background, orientation change, resize. Restores to safe state without corrupting match score.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/tests/mobile/"
+      ],
+      "minimumProofStrength": "L3",
+      "nonGoals": [
+        "Do not implement native app wrapper.",
+        "Do not add landscape-first layout."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 938,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "NFR-A11Y-001",
+      "kind": "NFR",
+      "title": "Accessibility and reduced motion",
+      "description": "type: non-functional\nlane: T1_MICRO\nrisk: low\npriority: should\nsource: SRS §26\n\n#### Scope Hints\nlikelyEdit:\n- src/ui/**\n- src/systems/camera/**\n- src/systems/fx/**\nlikelyTest:\n- src/tests/accessibility/**\nforbidden:\n- gameplay logic changes\n\n#### Non-Goals\n- Do not implement screen reader support for MVP.\n- Do not add colorblind modes for MVP.\n\n#### Acceptance Criteria\n- AC1 [must] UI text maintains adequate contrast against game background.\n- AC2 [must] Touch zones large enough for mobile use. Ball interaction zone does not require pixel-perfect input.\n- AC3 [should] Reduced-motion mode lowers shake, zoom pulses, slow-motion frequency, and flash intensity.\n- AC4 [should] Localization-ready UI strings for Arabic and English. Layout supports RTL.\n\n#### Proof Requirements\nminimum: L2",
+      "priority": "medium",
+      "category": "non-functional",
+      "lane": "T1_MICRO",
+      "risk": "low",
+      "planIds": [
+        "PLAN-M6"
+      ],
+      "references": [
+        "src/ui/**",
+        "src/systems/camera/**",
+        "src/systems/fx/**",
+        "src/tests/accessibility/**"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "UI text maintains adequate contrast against game background.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Touch zones large enough for mobile use. Ball interaction zone does not require pixel-perfect input.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Reduced-motion mode lowers shake, zoom pulses, slow-motion frequency, and flash intensity.",
+          "priority": "should"
+        },
+        {
+          "id": "AC4",
+          "description": "Localization-ready UI strings for Arabic and English. Layout supports RTL.",
+          "priority": "should"
+        }
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "Do not implement screen reader support for MVP.",
+        "Do not add colorblind modes for MVP."
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 972,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "ARCH-STACK-001",
+      "kind": "ARCH",
+      "title": "Technology stack",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\n\n#### Decision\nTypeScript (strict mode), Phaser 3 (2D game framework/renderer), Vite (build tool), Phaser Sound as the default audio layer, and custom arcade shot/collision logic. Howler.js is optional only if Phaser Sound proves insufficient and the SRS or task explicitly allows it.\n\n#### Architecture Constraints\n- Phaser is the required runtime/game framework for MVP.\n- Gameplay-critical motion must not depend on animation/tween timelines.\n- Phaser Tweens are allowed only for UI, camera, FX, and non-gameplay presentation.\n- Ball movement, goalkeeper reach, collision timing, score outcomes, and fairness-critical state must remain simulation-driven.\n- Phaser Arcade Physics may be used only for non-authoritative helper calculations if explicitly justified; authoritative shot outcomes remain custom/deterministic.\n\n#### Forbidden\n- PixiJS (stale stack from earlier draft; do not add or require it)\n- Unity WebGL (bundle size, memory, WebView risk)\n- Box2D / Matter.js (over-engineered for arcade penalty)\n- Redux or heavy state frameworks\n- Any stack change by an agent without updating and re-importing this SRS first\n\n#### Acceptance Criteria\n- AC1 [must] Project builds and runs with TypeScript strict mode, Phaser 3, and Vite.\n- AC2 [must] No runtime dependency on Unity, PixiJS, Box2D, or Matter.js.\n- AC3 [must] Gameplay motion and collision outcomes are controlled by Ma'at-tracked simulation code, not Phaser Tweens or animation timelines.\n- AC4 [must] Phaser is allowed/required by the generated architecture contract and is not listed as forbidden.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run\n- npm run build\n\n---",
+      "priority": "critical",
+      "category": "architecture",
+      "lane": "T4_ARCHITECTURE",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M1"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Project builds and runs with TypeScript strict mode, Phaser 3, and Vite.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "No runtime dependency on Unity, PixiJS, Box2D, or Matter.js.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Gameplay motion and collision outcomes are controlled by Ma'at-tracked simulation code, not Phaser Tweens or animation timelines.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Phaser is allowed/required by the generated architecture contract and is not listed as forbidden.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run",
+        "npm run build"
+      ],
+      "minimumProofStrength": "L2",
+      "nonGoals": [
+        "PixiJS (stale stack from earlier draft; do not add or require it)",
+        "Unity WebGL (bundle size, memory, WebView risk)",
+        "Box2D / Matter.js (over-engineered for arcade penalty)",
+        "Redux or heavy state frameworks",
+        "Any stack change by an agent without updating and re-importing this SRS first"
+      ],
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 1004,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "ARCH-PERF-001",
+      "kind": "ARCH",
+      "title": "Phaser WebGL mobile performance authority",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\nstatus: active\nrequiredStack:\n- phaser\n- webgl\n- single-canvas\nexpectedStack:\n- object-pooling\n- texture-atlases\n- performance-instrumentation\nforbidden:\n- multiple gameplay canvases\n- DOM-heavy active gameplay UI\n- Matter.js or Arcade Physics as authoritative collision\n- Phaser Tweens controlling ball trajectory or collision timing\n- creating/destroying display objects in shot hot path\n- unbounded particle emitters\n\n#### Decision\nThe implementation remains Phaser 3 + TypeScript + Vite, but Phaser is used as a lightweight WebGL renderer and scene runtime. Gameplay authority remains custom fixed-step simulation code.\n\n#### Rationale\nThe source SRS is a mobile WebView football game with high performance requirements. Phaser is acceptable only when used with strict rendering, pooling, texture, and fixed-step rules that preserve input responsiveness and deterministic fairness.\n\n#### Architecture Constraints\n- Phaser Game config must prefer WebGL renderer for production; Canvas fallback is QA/fallback only.\n- The game uses one Phaser Game instance and one canvas.\n- Main gameplay should use a small, controlled number of scenes: boot/loading, gameplay, optional UI overlay scene.\n- Gameplay-critical state is not stored inside Phaser display objects.\n- Ball, goalkeeper, collision, score, pressure, and outcome are simulation-owned.\n- Phaser Tweens are allowed for UI, camera, FX, and non-authoritative presentation only.\n- Object pools must be used for trails, particles, impact markers, temporary sprites, and reusable geometry.\n- No per-frame creation of textures, graphics objects, emitters, arrays, or closures inside active hot paths unless justified and measured.\n\n#### Acceptance Criteria\n- AC1 [must] Phaser is present as the required runtime/game framework and no PixiJS dependency exists.\n- AC2 [must] Production uses a single Phaser canvas and WebGL rendering where available.\n- AC3 [must] Ball flight, collision, goalkeeper reach, scoring, and pressure calculations are independent from Phaser Tweens and animation timelines.\n- AC4 [must] Performance instrumentation exposes FPS, frame time, dropped catch-up steps, active particles, texture memory estimate, and low-end mode state.\n- AC5 [must] Low-end mode can reduce presentation without changing shot outcome logic.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npm run build\n- npx vitest run src/core/ src/tests/performance/\nmarkers:\n- PASS SINGLE_CANVAS\n- PASS WEBGL_RUNTIME\n- PASS SIMULATION_AUTHORITY",
+      "priority": "critical",
+      "category": "architecture",
+      "lane": "T4_ARCHITECTURE",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M7"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Phaser is present as the required runtime/game framework and no PixiJS dependency exists.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Production uses a single Phaser canvas and WebGL rendering where available.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Ball flight, collision, goalkeeper reach, scoring, and pressure calculations are independent from Phaser Tweens and animation timelines.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Performance instrumentation exposes FPS, frame time, dropped catch-up steps, active particles, texture memory estimate, and low-end mode state.",
+          "priority": "must"
+        },
+        {
+          "id": "AC5",
+          "description": "Low-end mode can reduce presentation without changing shot outcome logic.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npm run build",
+        "npx vitest run src/core/ src/tests/performance/"
+      ],
+      "minimumProofStrength": "L2",
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 1042,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "ARCH-ASSET-001",
+      "kind": "ARCH",
+      "title": "Texture atlas and staged loading pipeline",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: medium\nstatus: active\nexpectedStack:\n- texture-atlas\n- staged-loading\n- compressed-assets\nforbidden:\n- loading all art before first playable state\n- huge standalone images in critical path\n- audio unlock blocking game start\n\n#### Decision\nAssets are loaded in stages: critical gameplay first, optional polish later. Sprite assets are grouped into atlases where practical to reduce mobile texture switching and memory overhead.\n\n#### Architecture Constraints\n- Boot scene loads only critical assets needed for first shot.\n- Optional advanced FX, crowd polish, and cosmetics may load after `ready` or lazily when needed.\n- Texture dimensions, file sizes, and load priority are tracked in an asset manifest.\n- Audio files load/unlock after user interaction and must never block gameplay if unavailable.\n- Asset fallback placeholders are allowed only when they preserve gameplay readability.\n\n#### Acceptance Criteria\n- AC1 [must] Asset manifest exists and is committed with the project.\n- AC2 [must] Critical and optional assets are separated by load priority.\n- AC3 [must] Build or QA process reports oversized critical assets.\n- AC4 [must] Missing optional assets do not block a playable five-shot match.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npm run build\n- npx vitest run src/tests/performance/\n\n---",
+      "priority": "critical",
+      "category": "architecture",
+      "lane": "T4_ARCHITECTURE",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M7"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Asset manifest exists and is committed with the project.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Critical and optional assets are separated by load priority.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Build or QA process reports oversized critical assets.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Missing optional assets do not block a playable five-shot match.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npm run build",
+        "npx vitest run src/tests/performance/"
+      ],
+      "minimumProofStrength": "L2",
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 1097,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "ARCH-GAMELOOP-001",
+      "kind": "ARCH",
+      "title": "Fixed-step simulation loop",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\n\n#### Decision\n60Hz fixed-step simulation loop. Rendering via requestAnimationFrame runs independently. Gameplay outcomes computed by fixed-step, not variable-frame rendering.\n\n#### Architecture Constraints\n- Fixed delta = 1/60s.\n- Max 3 catch-up steps per rendered frame. Excess accumulated time dropped.\n- Rendering may interpolate between snapshots but must not affect collision or outcomes.\n\n#### Update Order\n1. Input buffer\n2. Gesture capture/interpretation\n3. Match state machine\n4. Goalkeeper AI decision\n5. Ball trajectory/physics\n6. Collision and outcome detection\n7. Match score and pressure\n8. Camera state\n9. FX state\n10. Audio trigger evaluation\n11. UI state\n\n#### Acceptance Criteria\n- AC1 [must] Simulation uses fixed dt = 1/60s.\n- AC2 [must] Renderer reads state only via requestAnimationFrame.\n- AC3 [must] Max 3 catch-up steps per frame; excess time dropped.\n- AC4 [must] Systems execute in documented order.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/core/\n\n---",
+      "priority": "critical",
+      "category": "architecture",
+      "lane": "T4_ARCHITECTURE",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M1"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Simulation uses fixed dt = 1/60s.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Renderer reads state only via requestAnimationFrame.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Max 3 catch-up steps per frame; excess time dropped.",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "Systems execute in documented order.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/core/"
+      ],
+      "minimumProofStrength": "L2",
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 1135,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "ARCH-RENDER-001",
+      "kind": "ARCH",
+      "title": "Single Phaser canvas with logical layers",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: medium\n\n#### Decision\nOne canvas created by Phaser. Logical layers are implemented using Phaser Scene display order, Containers, or depth values.\n\n#### Layer Order\n\n| Layer | Z | Content |\n|---|---:|---|\n| Background | 0 | Stadium, crowd, field, sky |\n| Goal Back | 1 | Net back, rear goal elements |\n| Gameplay | 2 | Goalkeeper, ball, active actors |\n| Goal Front | 3 | Posts, crossbar, front net |\n| FX | 4 | Trails, particles, impacts |\n| UI | 5 | Score, shot counter, result, restart |\n| Cinematic Overlay | 6 | Vignette, flash, slow-motion |\n\n#### Architecture Constraints\n- Phaser owns the single canvas and render loop integration.\n- Stadium draws first. UI draws above gameplay but must not block core play areas.\n- Front goal frame draws above ball for depth illusion.\n- Cinematic overlay draws last.\n- Phaser display objects must read presentation state and must not mutate gameplay-authoritative state outside simulation ticks.\n\n#### Acceptance Criteria\n- AC1 [must] Single canvas element created by Phaser.\n- AC2 [must] 7 logical layers in documented Z-order.\n- AC3 [must] Draw order preserves depth illusion (keeper before ball when ball in front, front goal above ball).\n- AC4 [must] No PixiJS scene graph, PixiJS renderer, or PixiJS dependency exists.\n\n#### Proof Requirements\nminimum: L2\n\n---",
+      "priority": "critical",
+      "category": "architecture",
+      "lane": "T4_ARCHITECTURE",
+      "risk": "medium",
+      "planIds": [
+        "PLAN-M1"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "Single canvas element created by Phaser.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "7 logical layers in documented Z-order.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "Draw order preserves depth illusion (keeper before ball when ball in front, front goal above ball).",
+          "priority": "must"
+        },
+        {
+          "id": "AC4",
+          "description": "No PixiJS scene graph, PixiJS renderer, or PixiJS dependency exists.",
+          "priority": "must"
+        }
+      ],
+      "minimumProofStrength": "L2",
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 1174,
+      "createdAt": "2026-05-30T07:10:51Z"
+    },
+    {
+      "id": "ARCH-STATE-001",
+      "kind": "ARCH",
+      "title": "Runtime state tree with ownership",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\n\n#### Decision\nCentral runtime state tree with explicit read/write ownership per system. All gameplay-critical values in a centralized tuning registry loadable as data.\n\n#### Architecture Constraints\n- Systems must only write to their owned state slice.\n- Rendering code must never mutate the state tree.\n- State mutations only occur during simulation ticks.\n- Tuning constants must be importable from a single config module.\n\n#### State Tree Structure\n\n```text\nGameState\n ├── match: { phase, shotIndex, maxShots, playerScore, goalieScore, pressure, heroMoment, result }\n ├── input: { isDrawing, rawPoints, lastIntent }\n ├── ball: { position, previousPosition, trajectoryProgress, trajectory, scale, visible }\n ├── goalie: { position, mood, prediction, diveState, reachRadius, emotionalIntensity }\n ├── camera: { offset, zoom, shakeIntensity, trackingWeight, timeScale }\n ├── fx: { activeTrails, activeParticles, screenVignette, flashIntensity, hitStopRemainingMs }\n ├── audio: { unlocked, ambienceIntensity, pendingEvents }\n └── ui: { scoreVisible, resultText, hintVisible }\n```\n\n#### Ownership Rules\n\n| System | Reads | Writes |\n|---|---|---|\n| Input | browser events | input |\n| Gesture Interpreter | input.rawPoints | input.lastIntent |\n| Match State Machine | input, ball, outcome events | match, ui |\n| Ball System | match, input.lastIntent | ball |\n| Goalkeeper AI | match, input.lastIntent, ball | goalie |\n| Collision | ball, goalie, layout | outcome event |\n| Pressure | match | match.pressure |\n| Camera | match, ball, goalie | camera |\n| FX | gameplay events, pressure | fx |\n| Audio | gameplay events, pressure | audio |\n| UI | match, ui | display-only |\n\n#### Acceptance Criteria\n- AC1 [must] State tree contains documented sub-states with typed fields.\n- AC2 [must] Each system has documented read/write ownership and does not write to other systems' state.\n- AC3 [must] All tuning constants stored in centralized config loadable as data. Changing values does not require algorithm changes.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/core/",
+      "priority": "critical",
+      "category": "architecture",
+      "lane": "T4_ARCHITECTURE",
+      "risk": "high",
+      "planIds": [
+        "PLAN-M1"
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "AC1",
+          "description": "State tree contains documented sub-states with typed fields.",
+          "priority": "must"
+        },
+        {
+          "id": "AC2",
+          "description": "Each system has documented read/write ownership and does not write to other systems' state.",
+          "priority": "must"
+        },
+        {
+          "id": "AC3",
+          "description": "All tuning constants stored in centralized config loadable as data. Changing values does not require algorithm changes.",
+          "priority": "must"
+        }
+      ],
+      "proofCommands": [
+        "npx vitest run src/core/"
+      ],
+      "minimumProofStrength": "L2",
+      "status": "pending",
+      "sourceFile": "c:\\Users\\dryos\\Downloads\\Shooter\\docs\\GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md",
+      "sourceLine": 1212,
+      "createdAt": "2026-05-30T07:10:51Z"
+    }
+  ],
+  "plans": [
+    {
+      "id": "PLAN-M1",
+      "title": "Project foundation",
+      "order": 1,
+      "lane": "T4_ARCHITECTURE",
+      "linkedRequirements": [
+        "ARCH-STACK-001",
+        "ARCH-GAMELOOP-001",
+        "ARCH-RENDER-001",
+        "ARCH-STATE-001",
+        "REQ-LOOP-001"
+      ],
+      "description": "type: milestone\norder: 1\nlane: T4_ARCHITECTURE\n\n#### Goal\nVite + TypeScript + Phaser project running with responsive canvas, fixed-step game loop, state machine transitions through all phases, and placeholder rendering (stadium, ball, goal, UI).\n\n#### Includes\n- ARCH-STACK-001\n- ARCH-GAMELOOP-001\n- ARCH-RENDER-001\n- ARCH-STATE-001\n- REQ-LOOP-001 (state machine only, no scoring logic yet)\n\n#### Deliverables\n- Running dev server with responsive portrait Phaser canvas\n- Fixed-step simulation loop at 60Hz\n- State machine with all transitions\n- Placeholder sprites for stadium, ball, goal\n- Placeholder UI for score display\n\n#### Exit Criteria\n- AC1 [must] Project runs with `npm run dev` and renders responsive portrait Phaser canvas.\n- AC2 [must] State machine transitions through all documented phases without error.\n- AC3 [must] Simulation runs at fixed 60Hz independent of render framerate.\n- AC4 [must] Phaser is the only runtime/game framework; no PixiJS dependency or import exists.\n\n#### Verification Matrix\n| AC | Proof | Command |\n|---|---|---|\n| AC1 | L2 | npm run build |\n| AC2 | L3 | npx vitest run src/core/state-machine |\n| AC3 | L3 | npx vitest run src/core/game-loop |\n| AC4 | L2 | npm run build |\n\n---",
+      "sourceLine": 1393
+    },
+    {
+      "id": "PLAN-M2",
+      "title": "Input and shot interpretation",
+      "order": 2,
+      "lane": "T2_STANDARD",
+      "linkedRequirements": [
+        "REQ-INPUT-001",
+        "REQ-SHOT-001"
+      ],
+      "description": "type: milestone\norder: 2\nlane: T2_STANDARD\n\n#### Goal\nPlayer can draw gesture on ball, see live trail, and gesture is converted into shot intent with target, force, curve, and quality.\n\n#### Includes\n- REQ-INPUT-001\n- REQ-SHOT-001\n\n#### Deliverables\n- Touch/pointer/mouse input capture\n- Gesture validation logic\n- Live drawing trail\n- Shot intent interpreter\n\n#### Exit Criteria\n- AC1 [must] Valid gesture produces shot intent with all fields populated.\n- AC2 [must] Invalid gesture returns to aiming cleanly.\n- AC3 [must] Drawing trail visible during gesture.\n\n#### Verification Matrix\n| AC | Proof | Command |\n|---|---|---|\n| AC1 | L3 | npx vitest run src/systems/input/ src/systems/shot/ |\n| AC2 | L3 | npx vitest run src/systems/input/ |\n| AC3 | L2 | manual browser verification |\n\n---",
+      "sourceLine": 1431
+    },
+    {
+      "id": "PLAN-M3",
+      "title": "Ball flight and goalkeeper",
+      "order": 3,
+      "lane": "T3_HIGH_RISK",
+      "linkedRequirements": [
+        "REQ-BALL-001",
+        "REQ-GOALIE-001",
+        "REQ-ANIM-001"
+      ],
+      "description": "type: milestone\norder: 3\nlane: T3_HIGH_RISK\n\n#### Goal\nBall flies on Bézier trajectory, goalkeeper predicts and dives, collisions resolve as goal/save/miss deterministically.\n\n#### Includes\n- REQ-BALL-001\n- REQ-GOALIE-001\n- REQ-ANIM-001\n\n#### Deliverables\n- Ball trajectory generator\n- Ball depth scaling\n- Goalkeeper AI (prediction, reaction, dive)\n- Collision resolver\n- Goalkeeper placeholder animation\n\n#### Exit Criteria\n- AC1 [must] Ball follows curved trajectory toward interpreted target.\n- AC2 [must] Goalkeeper dives based on prediction with mood-appropriate timing.\n- AC3 [must] Same shot intent + same AI seed = same outcome.\n- AC4 [must] Save shows visible keeper contact.\n\n#### Verification Matrix\n| AC | Proof | Command |\n|---|---|---|\n| AC1 | L3 | npx vitest run src/systems/ball/ |\n| AC2 | L3 | npx vitest run src/systems/goalkeeper/ |\n| AC3 | L3 | npx vitest run src/systems/collision/ |\n| AC4 | L2 | manual browser verification |\n\n---",
+      "sourceLine": 1463
+    },
+    {
+      "id": "PLAN-M4",
+      "title": "Match flow, pressure, and emotion",
+      "order": 4,
+      "lane": "T2_STANDARD",
+      "linkedRequirements": [
+        "REQ-LOOP-001",
+        "REQ-PRESSURE-001",
+        "REQ-BALANCE-001"
+      ],
+      "description": "type: milestone\norder: 4\nlane: T2_STANDARD\n\n#### Goal\nComplete five-shot match with scoring, pressure system driving mood transitions, hero moment detection, and difficulty configuration.\n\n#### Includes\n- REQ-LOOP-001 (full match rules)\n- REQ-PRESSURE-001\n- REQ-BALANCE-001\n\n#### Deliverables\n- Five-shot match with scoring and restart\n- Pressure formula with escalation floor\n- Mood transition logic\n- Hero moment classifier\n- Difficulty preset configuration\n\n#### Exit Criteria\n- AC1 [must] Player completes a five-shot match with correct scoring.\n- AC2 [must] Pressure increases across shots and goalkeeper mood visibly changes.\n- AC3 [must] Hero moments detected on qualifying shots.\n- AC4 [must] Match restart works immediately.\n\n#### Verification Matrix\n| AC | Proof | Command |\n|---|---|---|\n| AC1 | L3 | npx vitest run src/systems/match/ |\n| AC2 | L3 | npx vitest run src/systems/pressure/ src/systems/goalkeeper/ |\n| AC3 | L3 | npx vitest run src/systems/hero/ |\n| AC4 | L2 | manual browser verification |\n\n---",
+      "sourceLine": 1499
+    },
+    {
+      "id": "PLAN-M5",
+      "title": "Cinematic polish and audio",
+      "order": 5,
+      "lane": "T2_STANDARD",
+      "linkedRequirements": [
+        "REQ-CINEMA-001",
+        "REQ-FX-001",
+        "REQ-UI-001",
+        "REQ-AUDIO-001"
+      ],
+      "description": "type: milestone\norder: 5\nlane: T2_STANDARD\n\n#### Goal\nCamera, FX, audio, and UI complete. Match feels cinematically alive with pressure-driven intensity scaling.\n\n#### Includes\n- REQ-CINEMA-001\n- REQ-FX-001\n- REQ-UI-001\n- REQ-AUDIO-001\n\n#### Deliverables\n- Cinematic camera (zoom, tracking, shake, slow-mo)\n- Full FX system (trails, impacts, screen effects)\n- Adaptive audio with Phaser Sound by default; Howler.js only if explicitly justified\n- Polished UI with outcome clarity\n\n#### Exit Criteria\n- AC1 [must] Camera intensity scales visibly with pressure.\n- AC2 [must] FX fire on goal, save, and miss with correct intensity.\n- AC3 [must] Audio plays kick on commit and scales with pressure.\n- AC4 [must] All outcomes clearly distinguishable within 500ms.\n\n#### Verification Matrix\n| AC | Proof | Command |\n|---|---|---|\n| AC1 | L2 | manual browser verification |\n| AC2 | L3 | npx vitest run src/systems/fx/ |\n| AC3 | L3 | npx vitest run src/systems/audio/ |\n| AC4 | L2 | manual browser verification |\n\n---",
+      "sourceLine": 1535
+    },
+    {
+      "id": "PLAN-M6",
+      "title": "Mobile optimization and QA",
+      "order": 6,
+      "lane": "T2_STANDARD",
+      "linkedRequirements": [
+        "NFR-PERF-001",
+        "NFR-MOBILE-001",
+        "NFR-A11Y-001"
+      ],
+      "description": "type: milestone\norder: 6\nlane: T2_STANDARD\n\n#### Goal\nMobile WebView ready. Performance budgets met. Accessibility handled. All acceptance criteria verified.\n\n#### Includes\n- NFR-PERF-001\n- NFR-MOBILE-001\n- NFR-A11Y-001\n\n#### Deliverables\n- DPR capping and safe area handling\n- Visibility pause/resume\n- Resize/orientation handling\n- Low-end FX fallback\n- Reduced-motion mode\n- Performance budget verification\n\n#### Exit Criteria\n- AC1 [must] 60 FPS on target devices during active play.\n- AC2 [must] Visibility changes handled without match corruption.\n- AC3 [must] Portrait layout works at 320px minimum width.\n- AC4 [should] Reduced-motion mode functional.\n\n#### Verification Matrix\n| AC | Proof | Command |\n|---|---|---|\n| AC1 | L3 | npx vitest run src/tests/performance/ |\n| AC2 | L3 | npx vitest run src/tests/mobile/ |\n| AC3 | L2 | manual browser verification |\n| AC4 | L2 | manual browser verification |\n\n\n\n---",
+      "sourceLine": 1571
+    },
+    {
+      "id": "PLAN-M7",
+      "title": "Vendor performance acceptance and handover",
+      "order": 7,
+      "lane": "T2_STANDARD",
+      "linkedRequirements": [
+        "PILLAR-006",
+        "REQ-SCREEN-001",
+        "REQ-ASSET-001",
+        "NFR-PERF-002",
+        "NFR-BUNDLE-001",
+        "NFR-DEVICE-001",
+        "ARCH-PERF-001",
+        "ARCH-ASSET-001",
+        "METHOD-PERFORMANCE-001"
+      ],
+      "description": "type: milestone\norder: 7\nlane: T2_STANDARD\n\n#### Goal\nFreeze gameplay scope, verify mobile performance gates, complete manual UAT, deliver asset manifest, and confirm the build is ready for WebView integration.\n\n#### Includes\n- PILLAR-006\n- REQ-SCREEN-001\n- REQ-ASSET-001\n- NFR-PERF-002\n- NFR-BUNDLE-001\n- NFR-DEVICE-001\n- ARCH-PERF-001\n- ARCH-ASSET-001\n- METHOD-PERFORMANCE-001\n\n#### Deliverables\n- Final production build.\n- Device/browser QA report.\n- Performance report with FPS, frame time, and low-end fallback results.\n- Asset and audio manifest.\n- Manual UAT checklist results.\n- Vendor handover checklist.\n\n#### Exit Criteria\n- AC1 [must] Approved mobile WebView targets complete a five-shot match without match-state corruption.\n- AC2 [must] Performance gates pass or documented low-end fallback is enabled.\n- AC3 [must] No forbidden dependencies or runtime architecture violations exist.\n- AC4 [must] Asset manifest and tuning registry are delivered with the source.\n- AC5 [must] Final build, test, and preview commands are documented.\n\n#### Verification Matrix\n| AC | Proof | Command |\n|---|---|---|\n| AC1 | L2 | manual WebView QA |\n| AC2 | L3 | npx vitest run src/tests/performance/ |\n| AC3 | L2 | npm run build |\n| AC4 | L2 | manual handover check |\n| AC5 | L2 | npm run build |",
+      "sourceLine": 1610
+    }
+  ],
+  "docBlocks": [
+    {
+      "id": "PILLAR-001",
+      "kind": "PILLAR",
+      "title": "Expressive control",
+      "description": "type: pillar\nstatus: active\n\nPlayer input must feel personal and skill-based. The draw gesture is the central product differentiator — this is not a left/right penalty selector.",
+      "severity": "info",
+      "sourceLine": 19
+    },
+    {
+      "id": "PILLAR-002",
+      "kind": "PILLAR",
+      "title": "Fairness",
+      "description": "type: pillar\nstatus: active\n\nOutcomes must be understandable and must not be secretly forced. If a player scores or misses, they understand why.",
+      "severity": "info",
+      "sourceLine": 25
+    },
+    {
+      "id": "PILLAR-003",
+      "kind": "PILLAR",
+      "title": "Emotional escalation",
+      "description": "type: pillar\nstatus: active\n\nThe match must feel more intense near the end. The final shots must feel cinematic and stressful compared to the opening shots.",
+      "severity": "info",
+      "sourceLine": 31
+    },
+    {
+      "id": "PILLAR-004",
+      "kind": "PILLAR",
+      "title": "Micro-cinematics",
+      "description": "type: pillar\nstatus: active\n\nCinematic motion must amplify gameplay without stopping it. Short camera, timing, and FX enhancements lasting under 700ms that never remove player agency.",
+      "severity": "info",
+      "sourceLine": 37
+    },
+    {
+      "id": "PILLAR-005",
+      "kind": "PILLAR",
+      "title": "Mobile speed",
+      "description": "type: pillar\nstatus: active\n\nThe game must support short sessions and fast retries. Portrait-first, mobile-web-first, playable inside an app WebView.",
+      "severity": "info",
+      "sourceLine": 43
+    },
+    {
+      "id": "PILLAR-006",
+      "kind": "PILLAR",
+      "title": "Performance is gameplay",
+      "description": "type: pillar\nstatus: active\n\nMobile smoothness is part of the product, not a polish item. If cinematic effects, particles, audio, or art density threaten input responsiveness, frame rate, battery, or WebView stability, the game must degrade presentation first while preserving fair gameplay.",
+      "severity": "info",
+      "sourceLine": 49
+    },
+    {
+      "id": "ARCH-STACK-001",
+      "kind": "ARCH",
+      "title": "Technology stack",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\n\n#### Decision\nTypeScript (strict mode), Phaser 3 (2D game framework/renderer), Vite (build tool), Phaser Sound as the default audio layer, and custom arcade shot/collision logic. Howler.js is optional only if Phaser Sound proves insufficient and the SRS or task explicitly allows it.\n\n#### Architecture Constraints\n- Phaser is the required runtime/game framework for MVP.\n- Gameplay-critical motion must not depend on animation/tween timelines.\n- Phaser Tweens are allowed only for UI, camera, FX, and non-gameplay presentation.\n- Ball movement, goalkeeper reach, collision timing, score outcomes, and fairness-critical state must remain simulation-driven.\n- Phaser Arcade Physics may be used only for non-authoritative helper calculations if explicitly justified; authoritative shot outcomes remain custom/deterministic.\n\n#### Forbidden\n- PixiJS (stale stack from earlier draft; do not add or require it)\n- Unity WebGL (bundle size, memory, WebView risk)\n- Box2D / Matter.js (over-engineered for arcade penalty)\n- Redux or heavy state frameworks\n- Any stack change by an agent without updating and re-importing this SRS first\n\n#### Acceptance Criteria\n- AC1 [must] Project builds and runs with TypeScript strict mode, Phaser 3, and Vite.\n- AC2 [must] No runtime dependency on Unity, PixiJS, Box2D, or Matter.js.\n- AC3 [must] Gameplay motion and collision outcomes are controlled by Ma'at-tracked simulation code, not Phaser Tweens or animation timelines.\n- AC4 [must] Phaser is allowed/required by the generated architecture contract and is not listed as forbidden.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run\n- npm run build\n\n---",
+      "severity": "critical",
+      "sourceLine": 1004,
+      "decisions": [
+        "TypeScript (strict mode), Phaser 3 (2D game framework/renderer), Vite (build tool), Phaser Sound as the default audio layer, and custom arcade shot/collision logic. Howler.js is optional only if Phaser Sound proves insufficient and the SRS or task explicitly allows it."
+      ],
+      "architectureConstraints": [
+        "Phaser is the required runtime/game framework for MVP.",
+        "Gameplay-critical motion must not depend on animation/tween timelines.",
+        "Phaser Tweens are allowed only for UI, camera, FX, and non-gameplay presentation.",
+        "Ball movement, goalkeeper reach, collision timing, score outcomes, and fairness-critical state must remain simulation-driven.",
+        "Phaser Arcade Physics may be used only for non-authoritative helper calculations if explicitly justified; authoritative shot outcomes remain custom/deterministic."
+      ],
+      "requiredStack": [
+        "Phaser runtime",
+        "game MVP"
+      ],
+      "forbidden": [
+        "PixiJS",
+        "Unity WebGL",
+        "Box2D / Matter.js",
+        "Redux or heavy state frameworks",
+        "Any stack change by an agent without updating and re-importing this SRS first"
+      ]
+    },
+    {
+      "id": "ARCH-PERF-001",
+      "kind": "ARCH",
+      "title": "Phaser WebGL mobile performance authority",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\nstatus: active\nrequiredStack:\n- phaser\n- webgl\n- single-canvas\nexpectedStack:\n- object-pooling\n- texture-atlases\n- performance-instrumentation\nforbidden:\n- multiple gameplay canvases\n- DOM-heavy active gameplay UI\n- Matter.js or Arcade Physics as authoritative collision\n- Phaser Tweens controlling ball trajectory or collision timing\n- creating/destroying display objects in shot hot path\n- unbounded particle emitters\n\n#### Decision\nThe implementation remains Phaser 3 + TypeScript + Vite, but Phaser is used as a lightweight WebGL renderer and scene runtime. Gameplay authority remains custom fixed-step simulation code.\n\n#### Rationale\nThe source SRS is a mobile WebView football game with high performance requirements. Phaser is acceptable only when used with strict rendering, pooling, texture, and fixed-step rules that preserve input responsiveness and deterministic fairness.\n\n#### Architecture Constraints\n- Phaser Game config must prefer WebGL renderer for production; Canvas fallback is QA/fallback only.\n- The game uses one Phaser Game instance and one canvas.\n- Main gameplay should use a small, controlled number of scenes: boot/loading, gameplay, optional UI overlay scene.\n- Gameplay-critical state is not stored inside Phaser display objects.\n- Ball, goalkeeper, collision, score, pressure, and outcome are simulation-owned.\n- Phaser Tweens are allowed for UI, camera, FX, and non-authoritative presentation only.\n- Object pools must be used for trails, particles, impact markers, temporary sprites, and reusable geometry.\n- No per-frame creation of textures, graphics objects, emitters, arrays, or closures inside active hot paths unless justified and measured.\n\n#### Acceptance Criteria\n- AC1 [must] Phaser is present as the required runtime/game framework and no PixiJS dependency exists.\n- AC2 [must] Production uses a single Phaser canvas and WebGL rendering where available.\n- AC3 [must] Ball flight, collision, goalkeeper reach, scoring, and pressure calculations are independent from Phaser Tweens and animation timelines.\n- AC4 [must] Performance instrumentation exposes FPS, frame time, dropped catch-up steps, active particles, texture memory estimate, and low-end mode state.\n- AC5 [must] Low-end mode can reduce presentation without changing shot outcome logic.\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npm run build\n- npx vitest run src/core/ src/tests/performance/\nmarkers:\n- PASS SINGLE_CANVAS\n- PASS WEBGL_RUNTIME\n- PASS SIMULATION_AUTHORITY",
+      "severity": "critical",
+      "sourceLine": 1042,
+      "decisions": [
+        "The implementation remains Phaser 3 + TypeScript + Vite, but Phaser is used as a lightweight WebGL renderer and scene runtime. Gameplay authority remains custom fixed-step simulation code."
+      ],
+      "architectureConstraints": [
+        "Phaser Game config must prefer WebGL renderer for production; Canvas fallback is QA/fallback only.",
+        "The game uses one Phaser Game instance and one canvas.",
+        "Main gameplay should use a small, controlled number of scenes: boot/loading, gameplay, optional UI overlay scene.",
+        "Gameplay-critical state is not stored inside Phaser display objects.",
+        "Ball, goalkeeper, collision, score, pressure, and outcome are simulation-owned.",
+        "Phaser Tweens are allowed for UI, camera, FX, and non-authoritative presentation only.",
+        "Object pools must be used for trails, particles, impact markers, temporary sprites, and reusable geometry.",
+        "No per-frame creation of textures, graphics objects, emitters, arrays, or closures inside active hot paths unless justified and measured."
+      ],
+      "requiredStack": [
+        "phaser",
+        "webgl",
+        "single-canvas",
+        "Object pools trails",
+        "particles",
+        "impact markers",
+        "temporary sprites",
+        "reusable geometry"
+      ],
+      "expectedStack": [
+        "object-pooling",
+        "texture-atlases",
+        "performance-instrumentation"
+      ],
+      "forbidden": [
+        "multiple gameplay canvases",
+        "DOM-heavy active gameplay UI",
+        "Matter.js",
+        "Arcade Physics as authoritative collision",
+        "Phaser Tweens controlling ball trajectory",
+        "collision timing",
+        "creating",
+        "destroying display objects in shot hot path",
+        "unbounded particle emitters"
+      ],
+      "ambiguousArchitecture": [
+        "Phaser Game config must prefer WebGL renderer for production; Canvas fallback is QA/fallback only."
+      ]
+    },
+    {
+      "id": "ARCH-ASSET-001",
+      "kind": "ARCH",
+      "title": "Texture atlas and staged loading pipeline",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: medium\nstatus: active\nexpectedStack:\n- texture-atlas\n- staged-loading\n- compressed-assets\nforbidden:\n- loading all art before first playable state\n- huge standalone images in critical path\n- audio unlock blocking game start\n\n#### Decision\nAssets are loaded in stages: critical gameplay first, optional polish later. Sprite assets are grouped into atlases where practical to reduce mobile texture switching and memory overhead.\n\n#### Architecture Constraints\n- Boot scene loads only critical assets needed for first shot.\n- Optional advanced FX, crowd polish, and cosmetics may load after `ready` or lazily when needed.\n- Texture dimensions, file sizes, and load priority are tracked in an asset manifest.\n- Audio files load/unlock after user interaction and must never block gameplay if unavailable.\n- Asset fallback placeholders are allowed only when they preserve gameplay readability.\n\n#### Acceptance Criteria\n- AC1 [must] Asset manifest exists and is committed with the project.\n- AC2 [must] Critical and optional assets are separated by load priority.\n- AC3 [must] Build or QA process reports oversized critical assets.\n- AC4 [must] Missing optional assets do not block a playable five-shot match.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npm run build\n- npx vitest run src/tests/performance/\n\n---",
+      "severity": "critical",
+      "sourceLine": 1097,
+      "decisions": [
+        "Assets are loaded in stages: critical gameplay first, optional polish later. Sprite assets are grouped into atlases where practical to reduce mobile texture switching and memory overhead."
+      ],
+      "architectureConstraints": [
+        "Boot scene loads only critical assets needed for first shot.",
+        "Optional advanced FX, crowd polish, and cosmetics may load after `ready` or lazily when needed.",
+        "Texture dimensions, file sizes, and load priority are tracked in an asset manifest.",
+        "Audio files load/unlock after user interaction and must never block gameplay if unavailable.",
+        "Asset fallback placeholders are allowed only when they preserve gameplay readability."
+      ],
+      "expectedStack": [
+        "texture-atlas",
+        "staged-loading",
+        "compressed-assets"
+      ],
+      "forbidden": [
+        "loading all art before first playable state",
+        "huge standalone images in critical path",
+        "audio unlock blocking game start"
+      ]
+    },
+    {
+      "id": "ARCH-GAMELOOP-001",
+      "kind": "ARCH",
+      "title": "Fixed-step simulation loop",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\n\n#### Decision\n60Hz fixed-step simulation loop. Rendering via requestAnimationFrame runs independently. Gameplay outcomes computed by fixed-step, not variable-frame rendering.\n\n#### Architecture Constraints\n- Fixed delta = 1/60s.\n- Max 3 catch-up steps per rendered frame. Excess accumulated time dropped.\n- Rendering may interpolate between snapshots but must not affect collision or outcomes.\n\n#### Update Order\n1. Input buffer\n2. Gesture capture/interpretation\n3. Match state machine\n4. Goalkeeper AI decision\n5. Ball trajectory/physics\n6. Collision and outcome detection\n7. Match score and pressure\n8. Camera state\n9. FX state\n10. Audio trigger evaluation\n11. UI state\n\n#### Acceptance Criteria\n- AC1 [must] Simulation uses fixed dt = 1/60s.\n- AC2 [must] Renderer reads state only via requestAnimationFrame.\n- AC3 [must] Max 3 catch-up steps per frame; excess time dropped.\n- AC4 [must] Systems execute in documented order.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/core/\n\n---",
+      "severity": "critical",
+      "sourceLine": 1135,
+      "decisions": [
+        "60Hz fixed-step simulation loop. Rendering via requestAnimationFrame runs independently. Gameplay outcomes computed by fixed-step, not variable-frame rendering."
+      ],
+      "architectureConstraints": [
+        "Fixed delta = 1/60s.",
+        "Max 3 catch-up steps per rendered frame. Excess accumulated time dropped.",
+        "Rendering may interpolate between snapshots but must not affect collision or outcomes."
+      ]
+    },
+    {
+      "id": "ARCH-RENDER-001",
+      "kind": "ARCH",
+      "title": "Single Phaser canvas with logical layers",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: medium\n\n#### Decision\nOne canvas created by Phaser. Logical layers are implemented using Phaser Scene display order, Containers, or depth values.\n\n#### Layer Order\n\n| Layer | Z | Content |\n|---|---:|---|\n| Background | 0 | Stadium, crowd, field, sky |\n| Goal Back | 1 | Net back, rear goal elements |\n| Gameplay | 2 | Goalkeeper, ball, active actors |\n| Goal Front | 3 | Posts, crossbar, front net |\n| FX | 4 | Trails, particles, impacts |\n| UI | 5 | Score, shot counter, result, restart |\n| Cinematic Overlay | 6 | Vignette, flash, slow-motion |\n\n#### Architecture Constraints\n- Phaser owns the single canvas and render loop integration.\n- Stadium draws first. UI draws above gameplay but must not block core play areas.\n- Front goal frame draws above ball for depth illusion.\n- Cinematic overlay draws last.\n- Phaser display objects must read presentation state and must not mutate gameplay-authoritative state outside simulation ticks.\n\n#### Acceptance Criteria\n- AC1 [must] Single canvas element created by Phaser.\n- AC2 [must] 7 logical layers in documented Z-order.\n- AC3 [must] Draw order preserves depth illusion (keeper before ball when ball in front, front goal above ball).\n- AC4 [must] No PixiJS scene graph, PixiJS renderer, or PixiJS dependency exists.\n\n#### Proof Requirements\nminimum: L2\n\n---",
+      "severity": "critical",
+      "sourceLine": 1174,
+      "decisions": [
+        "One canvas created by Phaser. Logical layers are implemented using Phaser Scene display order, Containers, or depth values."
+      ],
+      "architectureConstraints": [
+        "Phaser owns the single canvas and render loop integration.",
+        "Stadium draws first. UI draws above gameplay but must not block core play areas.",
+        "Front goal frame draws above ball for depth illusion.",
+        "Cinematic overlay draws last.",
+        "Phaser display objects must read presentation state and must not mutate gameplay-authoritative state outside simulation ticks."
+      ]
+    },
+    {
+      "id": "ARCH-STATE-001",
+      "kind": "ARCH",
+      "title": "Runtime state tree with ownership",
+      "description": "type: architecture\nlane: T4_ARCHITECTURE\nrisk: high\n\n#### Decision\nCentral runtime state tree with explicit read/write ownership per system. All gameplay-critical values in a centralized tuning registry loadable as data.\n\n#### Architecture Constraints\n- Systems must only write to their owned state slice.\n- Rendering code must never mutate the state tree.\n- State mutations only occur during simulation ticks.\n- Tuning constants must be importable from a single config module.\n\n#### State Tree Structure\n\n```text\nGameState\n ├── match: { phase, shotIndex, maxShots, playerScore, goalieScore, pressure, heroMoment, result }\n ├── input: { isDrawing, rawPoints, lastIntent }\n ├── ball: { position, previousPosition, trajectoryProgress, trajectory, scale, visible }\n ├── goalie: { position, mood, prediction, diveState, reachRadius, emotionalIntensity }\n ├── camera: { offset, zoom, shakeIntensity, trackingWeight, timeScale }\n ├── fx: { activeTrails, activeParticles, screenVignette, flashIntensity, hitStopRemainingMs }\n ├── audio: { unlocked, ambienceIntensity, pendingEvents }\n └── ui: { scoreVisible, resultText, hintVisible }\n```\n\n#### Ownership Rules\n\n| System | Reads | Writes |\n|---|---|---|\n| Input | browser events | input |\n| Gesture Interpreter | input.rawPoints | input.lastIntent |\n| Match State Machine | input, ball, outcome events | match, ui |\n| Ball System | match, input.lastIntent | ball |\n| Goalkeeper AI | match, input.lastIntent, ball | goalie |\n| Collision | ball, goalie, layout | outcome event |\n| Pressure | match | match.pressure |\n| Camera | match, ball, goalie | camera |\n| FX | gameplay events, pressure | fx |\n| Audio | gameplay events, pressure | audio |\n| UI | match, ui | display-only |\n\n#### Acceptance Criteria\n- AC1 [must] State tree contains documented sub-states with typed fields.\n- AC2 [must] Each system has documented read/write ownership and does not write to other systems' state.\n- AC3 [must] All tuning constants stored in centralized config loadable as data. Changing values does not require algorithm changes.\n\n#### Proof Requirements\nminimum: L2\ncommands:\n- npx vitest run src/core/",
+      "severity": "critical",
+      "sourceLine": 1212,
+      "decisions": [
+        "Central runtime state tree with explicit read/write ownership per system. All gameplay-critical values in a centralized tuning registry loadable as data."
+      ],
+      "architectureConstraints": [
+        "Systems must only write to their owned state slice.",
+        "Rendering code must never mutate the state tree.",
+        "State mutations only occur during simulation ticks.",
+        "Tuning constants must be importable from a single config module."
+      ]
+    },
+    {
+      "id": "METHOD-DETERMINISM-001",
+      "kind": "METHOD",
+      "title": "Simulation authority over rendering",
+      "description": "type: methodology\nenforcement: constitution\nseverity: block\n\n#### Rule\nRendering code must not mutate gameplay-authoritative state. Gameplay state is mutated only during simulation ticks, never during rendering.\n\n#### Forbidden\n- Renderer functions writing to match, input, ball, goalie, or collision state\n- Animation timelines controlling collision timing or outcome resolution\n- State mutation outside simulation tick boundaries\n\n#### Proof Requirements\nminimum: L1\ncommands:\n- npx vitest run src/core/\n- npm run build\nmarkers:\n- PASS NO_RENDER_STATE_MUTATION\n\n---",
+      "severity": "block",
+      "sourceLine": 1268
+    },
+    {
+      "id": "METHOD-FAIRNESS-001",
+      "kind": "METHOD",
+      "title": "No forced outcomes",
+      "description": "type: methodology\nenforcement: constitution\nseverity: block\n\n#### Rule\nPressure, cinematic systems, and difficulty scaling affect presentation and AI behavior only. They never directly force a goal, save, or miss outcome.\n\n#### Forbidden\n- Overriding shot target after commit except through documented quality/error rules\n- Extending keeper reach beyond documented bounds for dramatic saves\n- Forcing a miss on a valid high-quality shot\n- Outcome manipulation in pressure, camera, FX, or audio modules\n\n#### Proof Requirements\nminimum: L1\ncommands:\n- npx vitest run src/systems/ball/ src/systems/collision/ src/systems/pressure/\nmarkers:\n- PASS NO_FORCED_OUTCOMES\n- PASS PRESENTATION_DOES_NOT_MUTATE_OUTCOME\n\n---",
+      "severity": "block",
+      "sourceLine": 1291
+    },
+    {
+      "id": "METHOD-TUNING-001",
+      "kind": "METHOD",
+      "title": "Centralized tuning constants",
+      "description": "type: methodology\nenforcement: constitution\nseverity: warn\n\n#### Rule\nAll gameplay-critical values shall be defined in a centralized tuning configuration module. No magic numbers scattered across gameplay systems.\n\n#### Forbidden\n- Hard-coded gameplay thresholds inside system logic files\n- Duplicated constant definitions across multiple files\n- Inline numeric literals for timing, distance, or force thresholds in gameplay code\n\n#### Proof Requirements\nminimum: L1\ncommands:\n- npx vitest run src/config/ src/core/\nmarkers:\n- PASS TUNING_REGISTRY_USED\n- PASS NO_SCATTERED_GAMEPLAY_MAGIC_NUMBERS\n\n---",
+      "severity": "warn",
+      "sourceLine": 1315
+    },
+    {
+      "id": "METHOD-PERFORMANCE-001",
+      "kind": "METHOD",
+      "title": "Performance budget is a release gate",
+      "description": "type: methodology\nenforcement: constitution\nseverity: block\n\n#### Rule\nNo gameplay, FX, camera, audio, UI, or art change is accepted if it breaks mobile WebView performance gates without a documented fallback.\n\n#### Forbidden\n- Adding visual polish that drops active gameplay below budget without low-end fallback\n- Allocating temporary objects every frame in hot paths\n- Increasing critical asset memory without updating the asset manifest\n- Accepting desktop-only performance as mobile production readiness\n- Hiding performance regressions by changing gameplay rules\n\n#### Proof Requirements\nminimum: L2\npreferred: L3\ncommands:\n- npx vitest run src/tests/performance/ src/tests/mobile/\n- npm run build\nmarkers:\n- PASS FPS_TARGET\n- PASS LOW_END_FALLBACK\n- PASS NO_HOT_PATH_ALLOCATION",
+      "severity": "block",
+      "sourceLine": 1340
+    },
+    {
+      "id": "METHOD-SRS-AUTHORITY-001",
+      "kind": "METHOD",
+      "title": "SRS-driven technology authority",
+      "description": "type: methodology\nenforcement: constitution\nseverity: block\n\n#### Rule\nThe technology stack is governed by this SRS and the generated Ma'at architecture contract. Agents must not introduce, remove, or replace core runtime technologies unless the SRS is explicitly updated and re-imported first.\n\n#### Forbidden\n- Adding PixiJS or any alternative renderer while Phaser is the required stack\n- Replacing Phaser with another engine/framework without SRS update\n- Creating implementation prototypes outside an active Ma'at task\n- Treating old roadmap completion as valid after an SRS stack change\n- Ignoring architecture-contract diagnostics about required or forbidden stack items\n\n#### Proof Requirements\nminimum: L1\ncommands:\n- npm run build\n- maat doc-check docs/GAME_SRS_Phaser_Corrected_MOBILE_PERFORMANCE_10_10_FIXED.md\nmarkers:\n- PASS NO_FORBIDDEN_RUNTIME_DEPENDENCIES\n- PASS ARCHITECTURE_CONTRACT_MATCHES_SRS\n- PASS TRACE_INCLUDES_REQ_ARCH_METHOD",
+      "severity": "block",
+      "sourceLine": 1366
+    },
+    {
+      "id": "DECISION-001",
+      "kind": "DECISION",
+      "title": "Final orientation policy",
+      "description": "status: open\nowner: human\n\nPortrait-only or portrait-first with landscape support? Landscape adds responsive layout complexity.",
+      "severity": "info",
+      "sourceLine": 1656
+    },
+    {
+      "id": "DECISION-002",
+      "kind": "DECISION",
+      "title": "Shooter character visibility",
+      "description": "status: open\nowner: human\n\nIs the shooter character/foot visible, or does only the ball appear? Affects art pipeline and screen composition.",
+      "severity": "info",
+      "sourceLine": 1662
+    },
+    {
+      "id": "DECISION-003",
+      "kind": "DECISION",
+      "title": "Art pipeline approach",
+      "description": "status: open\nowner: human\n\nSprite sheets, lightweight rig, or hybrid? Must balance loading speed, emotional expressiveness, and mobile bundle size.",
+      "severity": "info",
+      "sourceLine": 1668
+    },
+    {
+      "id": "DECISION-004",
+      "kind": "DECISION",
+      "title": "Match format variations",
+      "description": "status: open\nowner: human\n\nFixed five shots only, or add sudden-death for ties? Event-specific rule variations? Affects match state machine complexity.",
+      "severity": "info",
+      "sourceLine": 1674
+    },
+    {
+      "id": "DECISION-005",
+      "kind": "DECISION",
+      "title": "Audio scope for MVP",
+      "description": "status: open\nowner: human\n\nFull adaptive audio from M5, or minimal placeholder sounds first? Full audio requires sound asset production.",
+      "severity": "info",
+      "sourceLine": 1680
+    },
+    {
+      "id": "DECISION-006",
+      "kind": "DECISION",
+      "title": "Monetization and reward integration",
+      "description": "status: open\nowner: human\n\nAny monetization in MVP? Affects architecture hooks, account requirements, and privacy policy.",
+      "severity": "info",
+      "sourceLine": 1686
+    },
+    {
+      "id": "DECISION-007",
+      "kind": "DECISION",
+      "title": "Analytics provider",
+      "description": "status: open\nowner: human\n\nWhich analytics provider, if any? Telemetry hooks are in scope but provider integration is deferred.",
+      "severity": "info",
+      "sourceLine": 1692
+    },
+    {
+      "id": "DECISION-008",
+      "kind": "DECISION",
+      "title": "Final minimum performance device list",
+      "description": "status: open\nowner: human\n\nThe final physical device list for Android, iOS, and in-app WebView QA must be approved before production sign-off. Until approved, the SRS device matrix defines the minimum acceptance categories.",
+      "severity": "info",
+      "sourceLine": 1698
+    },
+    {
+      "id": "QA-UAT-001",
+      "kind": "QA",
+      "title": "Manual gameplay UAT scenarios",
+      "description": "type: qa\npriority: must\n\n#### Coverage\n| Scenario | Expected Result |\n|---|---|\n| Start game on 320px portrait viewport | ready/aiming state visible, no UI overlap |\n| Draw a valid straight shot | shot commits, ball follows clear target direction |\n| Draw a strong curved shot | ball curve visibly reflects gesture direction |\n| Draw too short / invalid gesture | returns to aiming with no penalty |\n| Repeat same shot intent and AI seed | same outcome is produced |\n| Goal outcome | ball enters goal, net feedback, score update visible within 500ms |\n| Save outcome | keeper contact/reach visible, save FX at contact point |\n| Miss outcome | ball visibly outside frame/post/high/wide, distinct from save |\n| Final decisive shot | pressure, camera, FX, and audio are stronger than shot 1 |\n| Reduced motion / low-end mode | shake, flash, particles, and slow motion reduce without gameplay changes |\n| Visibility loss during shot | game pauses/restores safe state without score corruption |\n| Match end restart | one action restarts a new match |",
+      "severity": "info",
+      "sourceLine": 1706
+    },
+    {
+      "id": "QA-PERF-001",
+      "kind": "QA",
+      "title": "Performance acceptance checklist",
+      "description": "type: qa\npriority: must\n\n#### Coverage\n- 60 FPS target during active gameplay on approved target devices.\n- 45 FPS minimum target in low-end mode.\n- Same-frame or next-frame drawing trail feedback.\n- No repeated object creation in hot paths for trails, particles, impact markers, or temporary vectors.\n- Critical texture memory target 16-32MB and active mid-range target under 64MB.\n- DPR cap of 2.0 unless performance report approves higher value.\n- Particle caps: 20-60 normal shots and max 120 hero moments.\n- Page scroll, browser gestures, and DOM overlays do not interfere with play.",
+      "severity": "info",
+      "sourceLine": 1726
+    },
+    {
+      "id": "QA-DELIVERY-001",
+      "kind": "QA",
+      "title": "Final vendor handover checklist",
+      "description": "type: qa\npriority: must\n\n#### Required Deliverables\n- Source code repository.\n- Install, dev, build, test, preview instructions.\n- Final SRS traceability to implemented features.\n- Asset and audio manifest.\n- Tuning registry documentation.\n- Device/browser QA report.\n- Performance report.\n- Known issues list.\n- Confirmation that forbidden dependencies are absent.\n- Confirmation that gameplay authority is fixed-step simulation, not presentation tweens.",
+      "severity": "info",
+      "sourceLine": 1740
+    }
+  ],
+  "createdAt": "2026-05-30T07:10:51Z",
+  "version": 1
+}

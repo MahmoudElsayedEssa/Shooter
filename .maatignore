@@ -1,0 +1,41 @@
+# >>> Ma'at Git sharing
+# Ma'at scan ignore: generated/cache/runtime files are not source proof.
+node_modules/
+node_modules_backup/
+dist/
+build/
+coverage/
+.vite/
+.cache/
+.turbo/
+.next/
+.gradle/
+.kotlin/
+target/
+out/
+.nyc_output/
+.parcel-cache/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+.maat/local/
+.maat/tasks/
+.maat/events/
+.maat/events.jsonl
+.maat/state.json
+.maat/compiled/
+.maat/intake/
+.maat/views/
+.maat/memo/
+.maat/graph/
+.maat/skills/usage.json
+.maat/skills/proposals/
+.maat/skills/archive/
+.maat/lessons/
+.maat/maat.lock
+.maat/**/.maat-tmp-*
+# <<< Ma'at Git sharing
