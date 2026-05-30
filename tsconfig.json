@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vitest/globals", "node"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "webgl": ["src/main.ts"],
+      "single-canvas": ["src/main.ts"],
+      "object-pools-trails": ["src/main.ts"],
+      "particles": ["src/main.ts"],
+      "impact-markers": ["src/main.ts"],
+      "temporary-sprites": ["src/main.ts"],
+      "reusable-geometry": ["src/main.ts"]
+    },
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}
