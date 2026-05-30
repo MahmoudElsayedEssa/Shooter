@@ -23,8 +23,11 @@ describe("REQ-ASSET-001 asset and audio manifest for mobile production", () => {
 
   it("AC2 separates critical first-play assets from optional polish assets", () => {
     expect(getCriticalFirstPlayAssets().map((asset) => asset.fileName)).toEqual([
-      "gameplay-atlas.webp",
-      "ui-atlas.webp"
+      "ball-atlas.webp",
+      "goal-atlas.webp",
+      "keeper-core-atlas.webp",
+      "ui-atlas.webp",
+      "basic-fx-atlas.webp"
     ]);
     expect(getOptionalPolishAssets().map((asset) => asset.fileName)).toEqual([
       "match-audio.ogg",
@@ -42,7 +45,15 @@ describe("REQ-ASSET-001 asset and audio manifest for mobile production", () => {
   });
 
   it("AC5 allows a complete five-shot match without optional polish assets", () => {
-    expect(canCompleteMatchWithoutOptionalAssets(["gameplay-atlas.webp", "ui-atlas.webp"])).toBe(true);
+    expect(
+      canCompleteMatchWithoutOptionalAssets([
+        "ball-atlas.webp",
+        "goal-atlas.webp",
+        "keeper-core-atlas.webp",
+        "ui-atlas.webp",
+        "basic-fx-atlas.webp"
+      ])
+    ).toBe(true);
     expect(canCompleteMatchWithoutOptionalAssets(["ui-atlas.webp"])).toBe(false);
   });
 });
