@@ -1,3 +1,11 @@
+import {
+  resolveDifficultyBalance,
+  shouldWrongCommit,
+  type DifficultyBalance,
+  type DifficultyPresetId,
+  type DifficultyVariationConfig
+} from "../../config/difficulty";
+
 export type GoalkeeperMood = "calm" | "focused" | "nervous" | "aggressive" | "desperate";
 export type DiveDirection = "left" | "center" | "right";
 export type ShotResult = "goal" | "save" | "miss";
@@ -15,6 +23,9 @@ export interface GoalkeeperContext {
   readonly targetX: number;
   readonly goalCenterX: number;
   readonly shotHistory: readonly DiveDirection[];
+  readonly difficultyPreset?: DifficultyPresetId;
+  readonly shotIndex?: number;
+  readonly aiSeed?: string | number;
 }
 
 export interface GoalkeeperDecision {
@@ -34,6 +45,9 @@ export interface TacticalLayer {
   readonly predictedX: number;
   readonly diveDirection: DiveDirection;
   readonly repeatPatternBonus: number;
+  readonly committedTargetX: number;
+  readonly predictionErrorPx: number;
+  readonly wrongCommitChance: number;
 }
 
 export interface PhysicalLayer {
@@ -43,12 +57,19 @@ export interface PhysicalLayer {
   readonly handReachPx: number;
   readonly wrongFooted: boolean;
   readonly teleported: false;
+  readonly skillMultiplier: number;
+  readonly reactionJitterMs: number;
 }
 
 export interface AnimationLayer {
   readonly pose: "idle" | "focus" | "anticipate" | "dive" | "recover";
   readonly face: "neutral" | "locked_in" | "worried" | "challenging" | "strained";
   readonly recoveryMs: number;
+  readonly variation: DifficultyVariationConfig["animationVariants"][number];
+  readonly fastRetryMs: number;
+  readonly maxFailureAnimationMs: number;
+  readonly clearSaveContact: true;
+  readonly clearMissReason: true;
 }
 
 export const GOALKEEPER_MOOD_CONFIG: Readonly<Record<GoalkeeperMood, {
@@ -66,16 +87,17 @@ export const GOALKEEPER_MOOD_CONFIG: Readonly<Record<GoalkeeperMood, {
 } as const;
 
 export function decideGoalkeeperAction(context: GoalkeeperContext): GoalkeeperDecision {
+  const balance = resolveDifficultyBalance(context.difficultyPreset, context.shotIndex, context.aiSeed);
   const emotional = getEmotionalLayer(context);
-  const tactical = getTacticalLayer(context, emotional.mood);
+  const tactical = getTacticalLayer(context, emotional.mood, balance);
   const wrongFooted = getDiveDirection(context.targetX, context.goalCenterX) !== tactical.diveDirection;
-  const physical = getPhysicalLayer(context, emotional.mood, wrongFooted);
+  const physical = getPhysicalLayer(context, emotional.mood, wrongFooted, balance);
 
   return {
     emotional,
     tactical,
     physical,
-    animation: getAnimationLayer(emotional.mood, tactical.repeatPatternBonus)
+    animation: getAnimationLayer(emotional.mood, tactical.repeatPatternBonus, balance)
   };
 }
 
@@ -123,31 +145,56 @@ function getEmotionalLayer(context: GoalkeeperContext): EmotionalLayer {
   return { mood: "calm", tension };
 }
 
-function getTacticalLayer(context: GoalkeeperContext, mood: GoalkeeperMood): TacticalLayer {
+function getTacticalLayer(context: GoalkeeperContext, mood: GoalkeeperMood, balance: DifficultyBalance): TacticalLayer {
   const config = GOALKEEPER_MOOD_CONFIG[mood];
   const repeatPatternBonus = getRepeatPatternBonus(context.shotHistory);
-  const curvePenalty = Math.abs(context.curve) * 0.18;
+  const qualityTolerance = balance.preset.shotQualityTolerance;
+  const curvePenalty = Math.abs(context.curve) * balance.preset.curveDifficultyMultiplier * 0.18;
+  const qualityBonus = clamp(context.shotQuality - qualityTolerance, 0, 1) * 0.14;
+  const skillAdjustedDifficulty = clamp(context.difficulty * balance.skillMultiplier, 0, 1.15);
   const predictionAccuracy = clamp(
-    config.accuracyBase + context.difficulty * 0.18 + context.shotQuality * 0.14 + repeatPatternBonus - curvePenalty,
+    config.accuracyBase + skillAdjustedDifficulty * 0.18 + qualityBonus + repeatPatternBonus - curvePenalty,
     0.05,
     0.95
   );
   const rawDirection = getDiveDirection(context.targetX, context.goalCenterX);
-  const diveDirection = config.risk > predictionAccuracy && rawDirection !== "center" ? opposite(rawDirection) : rawDirection;
+  const difficultyWrongCommit = shouldWrongCommit(
+    balance.preset.wrongCommitChance,
+    context.aiSeed ?? 0,
+    balance.shotIndex
+  );
+  const moodWrongCommit = config.risk > predictionAccuracy && rawDirection !== "center";
+  const diveDirection = (difficultyWrongCommit || moodWrongCommit) ? opposite(rawDirection) : rawDirection;
+  const predictionErrorPx = (1 - predictionAccuracy) * balance.preset.predictionErrorPx;
 
   return {
     predictionAccuracy,
-    predictedX: context.goalCenterX + (context.targetX - context.goalCenterX) * predictionAccuracy,
+    predictedX: context.goalCenterX +
+      (context.targetX - context.goalCenterX) * predictionAccuracy +
+      balance.predictionOffsetPx * (1 - context.shotQuality),
     diveDirection,
-    repeatPatternBonus
+    repeatPatternBonus,
+    committedTargetX: context.targetX,
+    predictionErrorPx,
+    wrongCommitChance: balance.preset.wrongCommitChance
   };
 }
 
-function getPhysicalLayer(context: GoalkeeperContext, mood: GoalkeeperMood, wrongFooted: boolean): PhysicalLayer {
+function getPhysicalLayer(
+  context: GoalkeeperContext,
+  mood: GoalkeeperMood,
+  wrongFooted: boolean,
+  balance: DifficultyBalance
+): PhysicalLayer {
   const config = GOALKEEPER_MOOD_CONFIG[mood];
-  const reactionMs = config.reactionRangeMs[0] +
+  const baseReactionMs = config.reactionRangeMs[0] +
     (config.reactionRangeMs[1] - config.reactionRangeMs[0]) * (1 - clamp(context.difficulty, 0, 1));
-  const reachRadiusPx = getReachAtDiveProgress(config.baselineReachPx, 0.5, wrongFooted);
+  const reactionMs = Math.max(0, baseReactionMs * balance.preset.reactionTimeMultiplier + balance.reactionJitterMs);
+  const reachRadiusPx = getReachAtDiveProgress(
+    config.baselineReachPx * balance.preset.reachRadiusMultiplier * balance.skillMultiplier,
+    0.5,
+    wrongFooted
+  );
 
   return {
     reactionMs,
@@ -155,15 +202,28 @@ function getPhysicalLayer(context: GoalkeeperContext, mood: GoalkeeperMood, wron
     reachRadiusPx,
     handReachPx: reachRadiusPx * 1.22,
     wrongFooted,
-    teleported: false
+    teleported: false,
+    skillMultiplier: balance.skillMultiplier,
+    reactionJitterMs: balance.reactionJitterMs
   };
 }
 
-function getAnimationLayer(mood: GoalkeeperMood, repeatPatternBonus: number): AnimationLayer {
+function getAnimationLayer(
+  mood: GoalkeeperMood,
+  repeatPatternBonus: number,
+  balance: DifficultyBalance
+): AnimationLayer {
+  const baseRecoveryMs = mood === "desperate" ? 320 : 240;
+
   return {
     pose: repeatPatternBonus > 0 ? "anticipate" : mood === "calm" ? "idle" : "focus",
     face: GOALKEEPER_MOOD_CONFIG[mood].face,
-    recoveryMs: mood === "desperate" ? 320 : 240
+    recoveryMs: Math.min(baseRecoveryMs, balance.preset.antiFrustration.maxFailureAnimationMs),
+    variation: balance.animationVariant,
+    fastRetryMs: balance.preset.antiFrustration.fastRetryMs,
+    maxFailureAnimationMs: balance.preset.antiFrustration.maxFailureAnimationMs,
+    clearSaveContact: balance.preset.antiFrustration.clearSaveContact,
+    clearMissReason: balance.preset.antiFrustration.clearMissReason
   };
 }
 
