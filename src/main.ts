@@ -6,6 +6,7 @@ import type { ParticlesEvidence } from "particles";
 import type { ImpactMarkersEvidence } from "impact-markers";
 import type { TemporarySpritesEvidence } from "temporary-sprites";
 import type { ReusableGeometryEvidence } from "reusable-geometry";
+import { createLogicalLayers, getLayerDepth } from "./render";
 
 declare module "webgl" {
   export interface WebglEvidence {
@@ -113,11 +114,14 @@ class BootstrapScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.add.text(16, 16, "Shooter", {
+    const layers = createLogicalLayers(this);
+    const title = this.add.text(16, 16, "Shooter", {
       color: "#ffffff",
       fontFamily: "Arial, sans-serif",
       fontSize: "24px"
     });
+
+    layers.ui.add(title);
   }
 }
 
@@ -130,9 +134,22 @@ export function createGameConfig(parent: string | HTMLElement): Phaser.Types.Cor
     backgroundColor: "#111827",
     scene: [BootstrapScene],
     banner: false,
+    render: {
+      antialias: true,
+      transparent: false
+    },
     callbacks: {
       preBoot: (game: Phaser.Game) => {
         game.registry.set("maatArchitectureEvidence", phaserStackMetadata);
+        game.registry.set("maatRenderLayerOrder", {
+          field: getLayerDepth("field"),
+          backGoal: getLayerDepth("backGoal"),
+          keeper: getLayerDepth("keeper"),
+          ball: getLayerDepth("ball"),
+          frontGoal: getLayerDepth("frontGoal"),
+          effects: getLayerDepth("effects"),
+          ui: getLayerDepth("ui")
+        });
       }
     },
     physics: {
