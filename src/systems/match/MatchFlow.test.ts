@@ -90,6 +90,15 @@ describe("REQ-LOOP-001 core match flow", () => {
     }
   });
 
+  it("METHOD-FAIRNESS-001 scores only the committed outcome without forced correction", () => {
+    const score = { player: 2, goalkeeper: 1 };
+
+    expect(scoreShot(score, "goal")).toEqual({ player: 3, goalkeeper: 1 });
+    expect(scoreShot(score, "save")).toEqual({ player: 2, goalkeeper: 2 });
+    expect(scoreShot(score, "miss")).toEqual({ player: 2, goalkeeper: 2 });
+    expect(score).toEqual({ player: 2, goalkeeper: 1 });
+  });
+
   it("AC4 restarts from match_end with one action", () => {
     const ended = {
       ...createMatchState(),

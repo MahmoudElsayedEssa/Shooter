@@ -49,6 +49,23 @@ interface RuntimeStateTree {
   readonly tuning: TuningConfig;
 }
 
+export type FairShotOutcome = "goal" | "save" | "miss";
+
+export interface FairnessPresentationInput {
+  readonly committedOutcome: FairShotOutcome;
+  readonly requestedPresentationOutcome?: FairShotOutcome;
+  readonly lowEndMode: boolean;
+}
+
+export interface FairnessPresentationState {
+  readonly outcome: FairShotOutcome;
+  readonly outcomeAuthority: "simulation";
+  readonly presentationOutcome: FairShotOutcome;
+  readonly lowEndMode: boolean;
+  readonly ignoredPresentationOverride: boolean;
+  readonly allowsForcedOutcome: false;
+}
+
 interface SystemOwnership {
   readonly system: RuntimeSystemName;
   readonly reads: readonly RuntimeStateKey[];
@@ -115,12 +132,19 @@ export const SINGLE_CANVAS_RENDER_CONTRACT = {
     reducesPresentationOnly: true,
     preservesShotOutcomeLogic: true
   },
+  fairnessAuthority: {
+    outcomeAuthority: "simulation",
+    forcedOutcomes: "forbidden",
+    presentationMayOverrideOutcome: false,
+    lowEndModeMayChangeOutcome: false
+  },
   runtimeState: {
     defaultTuningConfig: DEFAULT_TUNING_CONFIG,
     stateOwnership: STATE_OWNERSHIP,
     createInitialRuntimeState,
     getSystemOwnership,
-    applyOwnedStateUpdate
+    applyOwnedStateUpdate,
+    createFairnessPresentationState
   }
 } as const;
 
@@ -200,6 +224,23 @@ function applyOwnedStateUpdate<Key extends RuntimeStateKey>(
     ...state,
     [key]: value
   };
+}
+
+export function createFairnessPresentationState(
+  input: FairnessPresentationInput
+): FairnessPresentationState {
+  const ignoredPresentationOverride =
+    input.requestedPresentationOutcome !== undefined &&
+    input.requestedPresentationOutcome !== input.committedOutcome;
+
+  return Object.freeze({
+    outcome: input.committedOutcome,
+    outcomeAuthority: "simulation",
+    presentationOutcome: input.committedOutcome,
+    lowEndMode: input.lowEndMode,
+    ignoredPresentationOverride,
+    allowsForcedOutcome: false
+  });
 }
 
 export function isDrawnAbove(frontLayer: RenderLayerName, backLayer: RenderLayerName): boolean {

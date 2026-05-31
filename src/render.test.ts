@@ -6,9 +6,11 @@ import { createGameConfig } from "./main";
 import {
   LOGICAL_LAYER_ORDER,
   SINGLE_CANVAS_RENDER_CONTRACT,
+  createFairnessPresentationState,
   createLogicalLayers,
   getLayerDepth,
   isDrawnAbove,
+  type FairShotOutcome,
   type PhaserLayerLike
 } from "./render";
 
@@ -175,6 +177,35 @@ describe("ARCH-PERF-001 Phaser WebGL mobile performance authority", () => {
       reducesPresentationOnly: true,
       preservesShotOutcomeLogic: true
     });
+  });
+
+  it("METHOD-FAIRNESS-001 keeps presentation and low-end mode from forcing outcomes", () => {
+    expect(SINGLE_CANVAS_RENDER_CONTRACT.fairnessAuthority).toEqual({
+      outcomeAuthority: "simulation",
+      forcedOutcomes: "forbidden",
+      presentationMayOverrideOutcome: false,
+      lowEndModeMayChangeOutcome: false
+    });
+
+    const outcomes: readonly FairShotOutcome[] = ["goal", "save", "miss"];
+    for (const committedOutcome of outcomes) {
+      const requestedPresentationOutcome = outcomes.find((outcome) => outcome !== committedOutcome);
+      const presentationState = createFairnessPresentationState({
+        committedOutcome,
+        requestedPresentationOutcome,
+        lowEndMode: true
+      });
+
+      expect(presentationState).toEqual({
+        outcome: committedOutcome,
+        outcomeAuthority: "simulation",
+        presentationOutcome: committedOutcome,
+        lowEndMode: true,
+        ignoredPresentationOverride: true,
+        allowsForcedOutcome: false
+      });
+      expect(Object.isFrozen(presentationState)).toBe(true);
+    }
   });
 });
 
