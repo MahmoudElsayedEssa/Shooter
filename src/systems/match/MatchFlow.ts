@@ -43,6 +43,18 @@ export type MatchAction =
   | { readonly type: "visibility_restored" }
   | { readonly type: "restart" };
 
+const SRS_MATCH_ACTION_TYPES: ReadonlySet<MatchAction["type"]> = new Set([
+  "boot_complete",
+  "ready_to_aim",
+  "begin_drawing",
+  "invalid_gesture",
+  "commit_shot",
+  "advance",
+  "visibility_lost",
+  "visibility_restored",
+  "restart"
+]);
+
 export const MATCH_LIMITS = {
   maxShots: 5,
   shotCommitMs: 100,
@@ -63,6 +75,10 @@ export function createMatchState(): MatchState {
 }
 
 export function reduceMatchState(state: MatchState, action: MatchAction): MatchState {
+  if (!SRS_MATCH_ACTION_TYPES.has(action.type)) {
+    throw new Error(`Unsupported SRS match action: ${String(action.type)}`);
+  }
+
   switch (action.type) {
     case "boot_complete":
       return state.phase === "boot" ? transition(state, "ready") : state;
