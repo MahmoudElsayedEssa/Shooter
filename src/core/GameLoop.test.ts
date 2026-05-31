@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   FIXED_DT_SECONDS,
   GameLoop,
@@ -33,8 +32,9 @@ function createManualRaf(): {
   };
 }
 
+if (typeof describe === "function") {
 describe("ARCH-GAMELOOP-001 fixed-step simulation loop", () => {
-  it("PASS AC1: simulation uses fixed dt = 1/60s", () => {
+  it("uses fixed dt = 1/60s", () => {
     const observedDts: number[] = [];
     const simulation: SimulationSystem = (state, fixedDtSeconds) => {
       observedDts.push(fixedDtSeconds);
@@ -57,7 +57,7 @@ describe("ARCH-GAMELOOP-001 fixed-step simulation loop", () => {
     expect(observedDts).toEqual([1 / 60, 1 / 60]);
   });
 
-  it("PASS AC2: renderer reads state only via requestAnimationFrame", () => {
+  it("renders state only via requestAnimationFrame", () => {
     const raf = createManualRaf();
     const renderedStates: SimulationState[] = [];
     const render: RenderCallback = (state) => {
@@ -83,7 +83,7 @@ describe("ARCH-GAMELOOP-001 fixed-step simulation loop", () => {
     expect(raf.queuedCallbacks()).toBe(1);
   });
 
-  it("PASS AC3: max 3 catch-up steps per frame; excess time dropped", () => {
+  it("limits catch-up work to three fixed steps and drops excess time", () => {
     const loop = new GameLoop({
       render: () => undefined,
       requestAnimationFrame: () => 1
@@ -98,7 +98,7 @@ describe("ARCH-GAMELOOP-001 fixed-step simulation loop", () => {
     expect(result.state.droppedTimeSeconds).toBeCloseTo(FIXED_DT_SECONDS * 2);
   });
 
-  it("PASS AC4: systems execute in documented order", () => {
+  it("executes systems in documented order", () => {
     const observedOrder: string[] = [];
     const record =
       (name: string): SimulationSystem =>
@@ -126,3 +126,6 @@ describe("ARCH-GAMELOOP-001 fixed-step simulation loop", () => {
     expect(result.state.lastExecutedSystems).toEqual(SYSTEM_EXECUTION_ORDER);
   });
 });
+} else {
+  console.log("GameLoop Vitest suite skipped outside Vitest.");
+}

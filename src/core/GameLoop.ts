@@ -115,7 +115,7 @@ export class GameLoop {
     this.previousTimestampMs = timestampMs;
 
     const result = this.stepFrame(deltaSeconds);
-    this.options.render(result.state, result.interpolationAlpha);
+    this.options.render(createRenderSnapshot(result.state), result.interpolationAlpha);
     this.frameHandle = this.options.requestAnimationFrame(this.onAnimationFrame);
   };
 
@@ -140,5 +140,12 @@ function defaultSystem(systemName: SimulationSystemName): SimulationSystem {
   return (state) => ({
     ...state,
     lastExecutedSystems: [...state.lastExecutedSystems, systemName]
+  });
+}
+
+export function createRenderSnapshot(state: SimulationState): SimulationState {
+  return Object.freeze({
+    ...state,
+    lastExecutedSystems: Object.freeze([...state.lastExecutedSystems])
   });
 }
