@@ -6,7 +6,8 @@ import type { ParticlesEvidence } from "particles";
 import type { ImpactMarkersEvidence } from "impact-markers";
 import type { TemporarySpritesEvidence } from "temporary-sprites";
 import type { ReusableGeometryEvidence } from "reusable-geometry";
-import { createLogicalLayers, getLayerDepth } from "./render";
+import { PlayablePenaltyScene } from "./game/PlayablePenaltyScene";
+import { getLayerDepth } from "./render";
 
 declare module "webgl" {
   export interface WebglEvidence {
@@ -108,23 +109,6 @@ const phaserStackMetadata = {
   maatArchitectureEvidence: PHASER_PERFORMANCE_STACK_CONSTRAINTS
 };
 
-class BootstrapScene extends Phaser.Scene {
-  constructor() {
-    super("BootstrapScene");
-  }
-
-  create(): void {
-    const layers = createLogicalLayers(this);
-    const title = this.add.text(16, 16, "Shooter", {
-      color: "#ffffff",
-      fontFamily: "Arial, sans-serif",
-      fontSize: "24px"
-    });
-
-    layers.ui.add(title);
-  }
-}
-
 export function createGameConfig(parent: string | HTMLElement): Phaser.Types.Core.GameConfig {
   return {
     type: Phaser.WEBGL,
@@ -132,8 +116,12 @@ export function createGameConfig(parent: string | HTMLElement): Phaser.Types.Cor
     width: 960,
     height: 540,
     backgroundColor: "#111827",
-    scene: [BootstrapScene],
+    scene: [PlayablePenaltyScene],
     banner: false,
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
     render: {
       antialias: true,
       transparent: false,
