@@ -1,4 +1,5 @@
-import type { ShotIntent } from "../shot/ShotInterpreter";
+﻿import type { ShotIntent } from "../shot/ShotInterpreter";
+import { clamp, lerp } from "../../core/math";
 
 export interface Point2D {
   readonly x: number;
@@ -24,10 +25,12 @@ export const BALL_TRAJECTORY_LIMITS = {
   maxCurveOffsetPx: 160,
   minViewportWidthPx: 320,
   maxViewportWidthPx: 960,
-  minDurationMs: 450,
-  maxDurationMs: 850,
-  nearShooterScale: 1.2,
-  nearGoalScale: 0.62
+  // Save Timing Fix: slowed down for readability
+  // weak shot ~900ms, normal ~740ms, strong ~640ms, max force ~600ms
+  minDurationMs: 600,
+  maxDurationMs: 900,
+  nearShooterScale: 1.0,
+  nearGoalScale: 0.72
 } as const;
 
 export function createBallTrajectory(
@@ -93,12 +96,4 @@ function interpolate(a: Point2D, b: Point2D, t: number): Point2D {
     x: lerp(a.x, b.x, t),
     y: lerp(a.y, b.y, t)
   };
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

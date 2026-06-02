@@ -1,3 +1,5 @@
+﻿import { clamp } from "../core/math";
+
 export type DifficultyPresetId = "rookie" | "standard" | "elite";
 
 export interface DifficultyPreset {
@@ -144,8 +146,4 @@ function seededUnit(value: string): number {
   }
 
   return (hash >>> 0) / 4294967295;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

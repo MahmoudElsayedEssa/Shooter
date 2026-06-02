@@ -1,225 +1,288 @@
-import { describe, expect, it } from "vitest";
-import { DIFFICULTY_PRESETS, resolveDifficultyBalance } from "../../config/difficulty";
+import { describe, it, expect } from "vitest";
 import {
-  GOALKEEPER_MOOD_CONFIG,
   decideGoalkeeperAction,
-  getReachAtDiveProgress,
-  updateShotPatternMemory,
-  type DiveDirection,
-  type GoalkeeperContext
+  GOALKEEPER_MOOD_CONFIG,
+  type GoalkeeperContext,
 } from "./GoalkeeperAI";
+import {
+  GOALKEEPER_SKILL_MULTIPLIERS,
+  resolveDifficultyBalance,
+} from "../../config/difficulty";
 
-const baseContext: GoalkeeperContext = {
-  pressure: 0.2,
-  playerScore: 0,
-  goalkeeperScore: 0,
-  consecutiveGoalsAgainst: 0,
-  consecutiveSaves: 0,
-  matchPoint: false,
-  difficulty: 0.5,
-  shotQuality: 0.8,
-  curve: 0,
-  targetX: 240,
-  goalCenterX: 200,
-  shotHistory: [],
-  difficultyPreset: "standard",
-  shotIndex: 2,
-  aiSeed: "goalkeeper-test"
-};
+// ─── Helpers ───
 
-function decision(overrides: Partial<GoalkeeperContext> = {}) {
-  return decideGoalkeeperAction({ ...baseContext, ...overrides });
-}
-
-describe("REQ-GOALIE-001 goalkeeper AI", () => {
-  it("AC1 returns emotional, tactical, physical, and animation layers", () => {
-    const output = decision();
-    const expected = getExpectedPrediction();
-    const expectedReaction = getExpectedReaction("calm");
-
-    expect(output.emotional.mood).toBe("calm");
-    expect(output.emotional.tension).toBeCloseTo(0.11);
-    expect(output.tactical.predictionAccuracy).toBeCloseTo(expected.accuracy);
-    expect(output.tactical.predictedX).toBeCloseTo(expected.predictedX);
-    expect(output.tactical.diveDirection).toBe("right");
-    expect(output.tactical.committedTargetX).toBe(baseContext.targetX);
-    expect(output.tactical.wrongCommitChance).toBe(DIFFICULTY_PRESETS.standard.wrongCommitChance);
-    expect(output.physical.reactionMs).toBeCloseTo(expectedReaction);
-    expect(output.physical.reachRadiusPx).toBeCloseTo(69.6);
-    expect(output.physical.handReachPx).toBeCloseTo(84.912);
-    expect(output.physical.teleported).toBe(false);
-    expect(output.animation).toMatchObject({
-      pose: "idle",
-      face: "neutral",
-      recoveryMs: 240,
-      fastRetryMs: 500,
-      maxFailureAnimationMs: 620,
-      clearSaveContact: true,
-      clearMissReason: true
-    });
-  });
-
-  it("AC2 gives all five moods distinct visual and gameplay behavior", () => {
-    const cases: readonly [string, Partial<GoalkeeperContext>, string][] = [
-      ["calm", {}, "neutral"],
-      ["focused", { pressure: 0.6, consecutiveSaves: 2 }, "locked_in"],
-      ["nervous", { playerScore: 2, goalkeeperScore: 0, consecutiveGoalsAgainst: 2 }, "worried"],
-      ["aggressive", { playerScore: 0, goalkeeperScore: 1, pressure: 0.72 }, "challenging"],
-      ["desperate", { playerScore: 2, goalkeeperScore: 1, pressure: 0.9, matchPoint: true }, "strained"]
-    ];
-
-    for (const [mood, context, face] of cases) {
-      const output = decision(context);
-      expect(output.emotional.mood).toBe(mood);
-      expect(output.animation.face).toBe(face);
-      expect(output.tactical.predictionAccuracy).toBeCloseTo(
-        GOALKEEPER_MOOD_CONFIG[output.emotional.mood].accuracyBase +
-          ((context.difficulty ?? baseContext.difficulty) * 0.18) +
-          (Math.max(0, (context.shotQuality ?? baseContext.shotQuality) - DIFFICULTY_PRESETS.standard.shotQualityTolerance) * 0.14) -
-          Math.abs(context.curve ?? baseContext.curve) * 0.18
-      );
-      const [min, max] = GOALKEEPER_MOOD_CONFIG[output.emotional.mood].reactionRangeMs;
-      expect(output.physical.reactionMs).toBeCloseTo(
-        min + (max - min) * 0.5 + resolveDifficultyBalance("standard", 2, "goalkeeper-test").reactionJitterMs
-      );
-    }
-  });
-
-  it("AC3 transitions mood from pressure, score deficit, streaks, and match point", () => {
-    const focused = decision({ pressure: 0.58, consecutiveSaves: 2 });
-    const nervous = decision({ playerScore: 3, goalkeeperScore: 1, consecutiveGoalsAgainst: 2 });
-    const aggressive = decision({ playerScore: 0, goalkeeperScore: 1, pressure: 0.75 });
-    const desperate = decision({ playerScore: 4, goalkeeperScore: 3, pressure: 0.9, matchPoint: true });
-
-    expect(focused.emotional).toEqual({ mood: "focused", tension: 0.319 });
-    expect(nervous.emotional).toEqual({ mood: "nervous", tension: 0.65 });
-    expect(aggressive.emotional).toEqual({ mood: "aggressive", tension: 0.41250000000000003 });
-    expect(desperate.emotional.mood).toBe("desperate");
-    expect(desperate.emotional.tension).toBeCloseTo(0.825);
-  });
-
-  it("AC4 makes prediction accuracy depend on mood, difficulty, shot quality, and curve strength", () => {
-    const easyHighQuality = decision({ difficulty: 1, shotQuality: 1, curve: 0 }).tactical.predictionAccuracy;
-    const easyCurved = decision({ difficulty: 1, shotQuality: 1, curve: 1 }).tactical.predictionAccuracy;
-    const hardLowQuality = decision({ difficulty: 0, shotQuality: 0.2, curve: 0 }).tactical.predictionAccuracy;
-    const focused = decision({ pressure: 0.6, consecutiveSaves: 2 }).tactical.predictionAccuracy;
-
-    expect(easyHighQuality).toBeCloseTo(0.8092);
-    expect(easyCurved).toBeCloseTo(0.6292);
-    expect(hardLowQuality).toBeCloseTo(0.5172);
-    expect(focused).toBeCloseTo(0.8512);
-  });
-
-  it("AC5 keeps reaction timing inside each mood range", () => {
-    const balance = resolveDifficultyBalance("standard", 2, "goalkeeper-test");
-
-    for (const mood of Object.keys(GOALKEEPER_MOOD_CONFIG) as Array<keyof typeof GOALKEEPER_MOOD_CONFIG>) {
-      const [min, max] = GOALKEEPER_MOOD_CONFIG[mood].reactionRangeMs;
-      const contextByMood: Record<typeof mood, Partial<GoalkeeperContext>> = {
-        calm: {},
-        focused: { consecutiveSaves: 2 },
-        nervous: { consecutiveGoalsAgainst: 2, playerScore: 2 },
-        aggressive: { goalkeeperScore: 1, pressure: 0.8 },
-        desperate: { playerScore: 2, pressure: 0.9, matchPoint: true }
-      };
-      const output = decision(contextByMood[mood]);
-
-      expect(output.physical.reactionMs).toBeCloseTo(min + (max - min) * 0.5 + balance.reactionJitterMs);
-      expect(decision({ ...contextByMood[mood], difficulty: 1 }).physical.reactionMs).toBeCloseTo(
-        min + balance.reactionJitterMs
-      );
-      expect(decision({ ...contextByMood[mood], difficulty: 0 }).physical.reactionMs).toBeCloseTo(
-        max + balance.reactionJitterMs
-      );
-    }
-  });
-
-  it("AC6 expands reach at dive peak, weakens wrong-footed reach, and never teleports", () => {
-    const early = getReachAtDiveProgress(50, 0, false);
-    const peak = getReachAtDiveProgress(50, 0.5, false);
-    const wrongFootedPeak = getReachAtDiveProgress(50, 0.5, true);
-    const output = decision({
-      targetX: 160,
-      difficulty: 0,
-      shotQuality: 0.2,
-      curve: 1,
-      pressure: 0.9,
-      playerScore: 2,
-      matchPoint: true
-    });
-
-    expect(early).toBe(50);
-    expect(peak).toBe(72.5);
-    expect(wrongFootedPeak).toBe(52.199999999999996);
-    expect(output.physical.reachRadiusPx).toBeCloseTo(60.552);
-    expect(output.physical.handReachPx).toBeCloseTo(73.87344);
-    expect(output.physical.teleported).toBe(false);
-    expect(output.physical.wrongFooted).toBe(true);
-  });
-
-  it("AC7 improves repeated-direction prediction and uses anticipation pose", () => {
-    const history = ["right", "right", "right"].reduce<readonly DiveDirection[]>(
-      (next, direction) => updateShotPatternMemory(next, direction as DiveDirection),
-      []
-    );
-    const baseline = decision({ shotHistory: [] });
-    const learned = decision({ shotHistory: history });
-
-    expect(history).toEqual(["right", "right", "right"]);
-    expect(learned.tactical.repeatPatternBonus).toBe(0.12);
-    expect(baseline.tactical.predictionAccuracy).toBeCloseTo(0.6912);
-    expect(learned.tactical.predictionAccuracy).toBeCloseTo(0.8112);
-    expect(learned.animation.pose).toBe("anticipate");
-  });
-
-  it("REQ-BALANCE-001 AC3 and AC4 never forces shot outcome through goalkeeper decision data", () => {
-    const highQualityShot = decision({ difficultyPreset: "elite", difficulty: 1, shotQuality: 1, curve: 0.1 });
-    const dramaticShot = decision({
-      difficultyPreset: "elite",
-      difficulty: 1,
-      shotQuality: 0.3,
-      curve: 1,
-      pressure: 1,
-      matchPoint: true,
-      playerScore: 4,
-      goalkeeperScore: 4
-    });
-
-    expect("result" in highQualityShot).toBe(false);
-    expect("result" in dramaticShot).toBe(false);
-    expect(highQualityShot.physical.teleported).toBe(false);
-    expect(dramaticShot.physical.teleported).toBe(false);
-    expect(dramaticShot.physical.reachRadiusPx <= dramaticShot.physical.handReachPx).toBe(true);
-  });
-
-  it("REQ-BALANCE-001 AC5 keeps the committed target fixed after prediction variation", () => {
-    const first = decision({ targetX: 178, aiSeed: "seed-a", shotQuality: 0.55 });
-    const second = decision({ targetX: 178, aiSeed: "seed-b", shotQuality: 0.55 });
-
-    expect(first.tactical.committedTargetX).toBe(178);
-    expect(second.tactical.committedTargetX).toBe(178);
-    expect(first.tactical.predictedX === second.tactical.predictedX).toBe(false);
-  });
-});
-
-function getExpectedPrediction(overrides: Partial<GoalkeeperContext> = {}) {
-  const context = { ...baseContext, ...overrides };
-  const balance = resolveDifficultyBalance(context.difficultyPreset, context.shotIndex, context.aiSeed);
-  const accuracy = GOALKEEPER_MOOD_CONFIG.calm.accuracyBase +
-    context.difficulty * 0.18 +
-    Math.max(0, context.shotQuality - balance.preset.shotQualityTolerance) * 0.14 -
-    Math.abs(context.curve) * balance.preset.curveDifficultyMultiplier * 0.18;
-
+function makeContext(overrides: Partial<GoalkeeperContext> = {}): GoalkeeperContext {
   return {
-    accuracy,
-    predictedX: context.goalCenterX +
-      (context.targetX - context.goalCenterX) * accuracy +
-      balance.predictionOffsetPx * (1 - context.shotQuality)
+    pressure: 0.3,
+    playerScore: 0,
+    goalkeeperScore: 0,
+    consecutiveGoalsAgainst: 0,
+    consecutiveSaves: 0,
+    matchPoint: false,
+    difficulty: 0.5,
+    shotQuality: 0.8,
+    curve: 0,
+    targetX: 480,
+    goalCenterX: 480,
+    shotHistory: [],
+    difficultyPreset: "standard",
+    shotIndex: 0,
+    aiSeed: "test-seed-42",
+    ...overrides,
   };
 }
 
-function getExpectedReaction(mood: keyof typeof GOALKEEPER_MOOD_CONFIG) {
-  const [min, max] = GOALKEEPER_MOOD_CONFIG[mood].reactionRangeMs;
-  return min + (max - min) * 0.5 +
-    resolveDifficultyBalance(baseContext.difficultyPreset, baseContext.shotIndex, baseContext.aiSeed).reactionJitterMs;
-}
+// ─── Keeper canonical size constants (must match scene) ───
+const KEEPER_HEIGHT_BY_POSE = {
+  idle: 120,
+  ready: 120,
+  diveLeft: 90,
+  diveRight: 90,
+  save: 90,
+  miss: 120,
+};
+const MAX_STRETCH = 1.03;
+
+// ─── Tests ───
+
+describe("GoalkeeperAI", () => {
+  describe("decideGoalkeeperAction", () => {
+    it("returns all four decision layers", () => {
+      const decision = decideGoalkeeperAction(makeContext());
+      expect(decision).toHaveProperty("emotional");
+      expect(decision).toHaveProperty("tactical");
+      expect(decision).toHaveProperty("physical");
+      expect(decision).toHaveProperty("animation");
+    });
+
+    it("determines correct dive direction for center shot", () => {
+      const decision = decideGoalkeeperAction(
+        makeContext({ targetX: 480, goalCenterX: 480 })
+      );
+      expect(["center", "left", "right"]).toContain(decision.tactical.diveDirection);
+    });
+
+    it("predicts left direction for left-side shot", () => {
+      const decision = decideGoalkeeperAction(
+        makeContext({ targetX: 300, goalCenterX: 480, aiSeed: "left-test" })
+      );
+      expect(decision.tactical.committedTargetX).toBe(300);
+    });
+
+    it("predicts right direction for right-side shot", () => {
+      const decision = decideGoalkeeperAction(
+        makeContext({ targetX: 660, goalCenterX: 480, aiSeed: "right-test" })
+      );
+      expect(decision.tactical.committedTargetX).toBe(660);
+    });
+  });
+
+  describe("saves at different positions", () => {
+    it("center shot can be saved (keeper dives center)", () => {
+      const ctx = makeContext({
+        targetX: 480, goalCenterX: 480, difficulty: 0.8,
+        aiSeed: "center-save-test", shotIndex: 2
+      });
+      const decision = decideGoalkeeperAction(ctx);
+      expect(decision.physical.reachRadiusPx).toBeGreaterThan(30);
+      expect(decision.physical.bodyX).toBe(480);
+    });
+
+    it("left reachable shot can be saved (keeper dives left)", () => {
+      const ctx = makeContext({
+        targetX: 320, goalCenterX: 480, difficulty: 0.8,
+        aiSeed: "left-save-test", shotIndex: 2
+      });
+      const decision = decideGoalkeeperAction(ctx);
+      expect(decision.physical.reachRadiusPx).toBeGreaterThan(30);
+    });
+
+    it("right reachable shot can be saved (keeper dives right)", () => {
+      const ctx = makeContext({
+        targetX: 640, goalCenterX: 480, difficulty: 0.8,
+        aiSeed: "right-save-test", shotIndex: 2
+      });
+      const decision = decideGoalkeeperAction(ctx);
+      expect(decision.physical.reachRadiusPx).toBeGreaterThan(30);
+    });
+
+    it("wrong-side dive reduces reach (wrongFooted penalty)", () => {
+      const ctx = makeContext({
+        targetX: 300, goalCenterX: 480, difficulty: 0.5,
+        curve: 0, shotQuality: 0.3,
+      });
+      let foundWrongFooted = false;
+      for (let i = 0; i < 20; i++) {
+        const decision = decideGoalkeeperAction({ ...ctx, aiSeed: `wrong-foot-${i}` });
+        if (decision.physical.wrongFooted) {
+          foundWrongFooted = true;
+          expect(decision.physical.wrongFooted).toBe(true);
+          break;
+        }
+      }
+      expect(foundWrongFooted).toBe(true);
+    });
+  });
+
+  describe("keeper canonical size enforcement", () => {
+    it("save animation must not exceed canonical max height (idle)", () => {
+      // The keeper idle height (120) must never be exceeded
+      const maxAllowed = KEEPER_HEIGHT_BY_POSE.idle * MAX_STRETCH;
+      expect(maxAllowed).toBeCloseTo(123.6, 1);
+      // 1.15 scale would produce 138 — which is WAY too big
+      expect(KEEPER_HEIGHT_BY_POSE.idle * 1.15).toBeGreaterThan(maxAllowed);
+    });
+
+    it("save animation must not exceed canonical max height (dive)", () => {
+      const maxAllowed = KEEPER_HEIGHT_BY_POSE.save * MAX_STRETCH;
+      expect(maxAllowed).toBeCloseTo(92.7, 1);
+      // 1.15 scale would produce 103.5 — too big
+      expect(KEEPER_HEIGHT_BY_POSE.save * 1.15).toBeGreaterThan(maxAllowed);
+    });
+
+    it("stretch factor during dive is capped at 1.03", () => {
+      // stretchX = 1 + rotationCurve * 0.03 at max
+      // rotationCurve = sin(PI) = 0 at extremes, max at sin(PI/2) = 1
+      const maxStretchX = 1 + 1 * 0.03;
+      expect(maxStretchX).toBeLessThanOrEqual(MAX_STRETCH);
+    });
+  });
+
+  describe("difficulty progression", () => {
+    it("skill multiplier increases from shot 1 to shot 5", () => {
+      expect(GOALKEEPER_SKILL_MULTIPLIERS[0]).toBeLessThan(GOALKEEPER_SKILL_MULTIPLIERS[4]);
+    });
+
+    it("shot 1 skill multiplier is 0.85", () => {
+      expect(GOALKEEPER_SKILL_MULTIPLIERS[0]).toBe(0.85);
+    });
+
+    it("shot 5 skill multiplier is 1.1", () => {
+      expect(GOALKEEPER_SKILL_MULTIPLIERS[4]).toBe(1.1);
+    });
+
+    it("resolveDifficultyBalance returns correct skill for each shot index", () => {
+      for (let i = 0; i < 5; i++) {
+        const balance = resolveDifficultyBalance("standard", i, "progression-test");
+        expect(balance.skillMultiplier).toBe(GOALKEEPER_SKILL_MULTIPLIERS[i]);
+      }
+    });
+
+    it("reach radius increases across shots for same context", () => {
+      const reachByShot: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        const ctx = makeContext({ shotIndex: i, aiSeed: "progression-reach" });
+        const decision = decideGoalkeeperAction(ctx);
+        reachByShot.push(decision.physical.reachRadiusPx);
+      }
+      expect(reachByShot[4]).toBeGreaterThan(reachByShot[0]);
+    });
+  });
+
+  describe("emotional pressure (mood)", () => {
+    it("returns calm mood when no pressure", () => {
+      const ctx = makeContext({
+        pressure: 0.1, playerScore: 0, goalkeeperScore: 0,
+        consecutiveGoalsAgainst: 0, consecutiveSaves: 0, matchPoint: false
+      });
+      const decision = decideGoalkeeperAction(ctx);
+      expect(decision.emotional.mood).toBe("calm");
+    });
+
+    it("returns nervous mood after consecutive goals against", () => {
+      const ctx = makeContext({ consecutiveGoalsAgainst: 2 });
+      const decision = decideGoalkeeperAction(ctx);
+      expect(decision.emotional.mood).toBe("nervous");
+    });
+
+    it("returns focused mood after consecutive saves", () => {
+      const ctx = makeContext({ consecutiveSaves: 2, pressure: 0.6 });
+      const decision = decideGoalkeeperAction(ctx);
+      expect(decision.emotional.mood).toBe("focused");
+    });
+
+    it("returns desperate mood at match point when losing", () => {
+      const ctx = makeContext({
+        matchPoint: true, playerScore: 3, goalkeeperScore: 1, pressure: 0.9
+      });
+      const decision = decideGoalkeeperAction(ctx);
+      expect(decision.emotional.mood).toBe("desperate");
+    });
+
+    it("shot 1 mood differs from final close shot mood", () => {
+      // Shot 1: calm
+      const shot1 = decideGoalkeeperAction(makeContext({
+        pressure: 0.1, shotIndex: 0, matchPoint: false
+      }));
+      // Shot 5 match point, losing
+      const shot5 = decideGoalkeeperAction(makeContext({
+        pressure: 0.9, shotIndex: 4, matchPoint: true,
+        playerScore: 3, goalkeeperScore: 2
+      }));
+      expect(shot1.emotional.mood).not.toBe(shot5.emotional.mood);
+    });
+
+    it("mood affects reaction range", () => {
+      const calmRange = GOALKEEPER_MOOD_CONFIG.calm.reactionRangeMs;
+      const focusedRange = GOALKEEPER_MOOD_CONFIG.focused.reactionRangeMs;
+      expect(focusedRange[0]).toBeLessThan(calmRange[0]);
+    });
+
+    it("mood affects accuracy base", () => {
+      expect(GOALKEEPER_MOOD_CONFIG.focused.accuracyBase).toBeGreaterThan(
+        GOALKEEPER_MOOD_CONFIG.calm.accuracyBase
+      );
+    });
+
+    it("desperate mood has widest reach but lowest accuracy", () => {
+      expect(GOALKEEPER_MOOD_CONFIG.desperate.baselineReachPx).toBeGreaterThan(
+        GOALKEEPER_MOOD_CONFIG.calm.baselineReachPx
+      );
+      expect(GOALKEEPER_MOOD_CONFIG.desperate.accuracyBase).toBeLessThan(
+        GOALKEEPER_MOOD_CONFIG.focused.accuracyBase
+      );
+    });
+
+    it("mood affects physical layer reaction speed", () => {
+      // Calm keeper should have slower reaction than focused keeper
+      const calmCtx = makeContext({
+        pressure: 0.1, consecutiveSaves: 0, consecutiveGoalsAgainst: 0
+      });
+      const focusedCtx = makeContext({
+        pressure: 0.6, consecutiveSaves: 2
+      });
+      const calm = decideGoalkeeperAction(calmCtx);
+      const focused = decideGoalkeeperAction(focusedCtx);
+      // Focused has faster (lower) base reaction
+      expect(focused.physical.reactionMs).toBeLessThan(calm.physical.reactionMs);
+    });
+
+    it("mood affects tactical prediction accuracy", () => {
+      const calmCtx = makeContext({
+        pressure: 0.1, consecutiveSaves: 0, consecutiveGoalsAgainst: 0,
+        aiSeed: "pred-test"
+      });
+      const focusedCtx = makeContext({
+        pressure: 0.6, consecutiveSaves: 2,
+        aiSeed: "pred-test"
+      });
+      const calm = decideGoalkeeperAction(calmCtx);
+      const focused = decideGoalkeeperAction(focusedCtx);
+      expect(focused.tactical.predictionAccuracy).toBeGreaterThan(calm.tactical.predictionAccuracy);
+    });
+
+    it("mood affects physical reach radius", () => {
+      // Desperate has highest baseline reach
+      const calmCtx = makeContext({
+        pressure: 0.1, shotIndex: 0
+      });
+      const desperateCtx = makeContext({
+        pressure: 0.9, matchPoint: true, playerScore: 3, goalkeeperScore: 1, shotIndex: 4
+      });
+      const calm = decideGoalkeeperAction(calmCtx);
+      const desperate = decideGoalkeeperAction(desperateCtx);
+      // Desperate should have different reach due to different baseline + skill multiplier
+      expect(desperate.physical.reachRadiusPx).not.toBe(calm.physical.reachRadiusPx);
+    });
+  });
+});

@@ -6,6 +6,7 @@ import type { ParticlesEvidence } from "particles";
 import type { ImpactMarkersEvidence } from "impact-markers";
 import type { TemporarySpritesEvidence } from "temporary-sprites";
 import type { ReusableGeometryEvidence } from "reusable-geometry";
+import { PORTRAIT_GAME_SIZE } from "./core/MobileViewport";
 import { PlayablePenaltyScene } from "./game/PlayablePenaltyScene";
 import { getLayerDepth } from "./render";
 
@@ -110,14 +111,17 @@ const phaserStackMetadata = {
 };
 
 export function createGameConfig(parent: string | HTMLElement): Phaser.Types.Core.GameConfig {
+  const cappedResolution = typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+
   return {
     type: Phaser.WEBGL,
     parent,
-    width: 960,
-    height: 540,
-    backgroundColor: "#111827",
+    width: PORTRAIT_GAME_SIZE.width,
+    height: PORTRAIT_GAME_SIZE.height,
+    backgroundColor: "#0a0e1a",
     scene: [PlayablePenaltyScene],
     banner: false,
+    ...({ resolution: cappedResolution } as object),
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH

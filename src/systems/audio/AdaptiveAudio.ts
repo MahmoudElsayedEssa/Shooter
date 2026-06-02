@@ -1,3 +1,5 @@
+﻿import { clamp, mix } from "../../core/math";
+
 export type AudioOutcome = "goal" | "save" | "miss" | "none";
 export type AudioEventType =
   | "kick"
@@ -117,12 +119,4 @@ function makeEvent(type: AudioEventType, startMs: number, intensity: number, pit
     intensity,
     pitch
   };
-}
-
-function mix(a: number, b: number, amount: number): number {
-  return a + (b - a) * clamp(amount, 0, 1);
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

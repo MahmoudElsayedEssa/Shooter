@@ -1,10 +1,11 @@
-import {
+﻿import {
   resolveDifficultyBalance,
   shouldWrongCommit,
   type DifficultyBalance,
   type DifficultyPresetId,
   type DifficultyVariationConfig
 } from "../../config/difficulty";
+import { clamp } from "../../core/math";
 
 export type GoalkeeperMood = "calm" | "focused" | "nervous" | "aggressive" | "desperate";
 export type DiveDirection = "left" | "center" | "right";
@@ -254,8 +255,4 @@ function opposite(direction: DiveDirection): DiveDirection {
     return "left";
   }
   return "center";
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

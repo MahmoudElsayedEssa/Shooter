@@ -1,5 +1,19 @@
 # >>> Ma'at Git sharing
 # Ma'at Git sharing: shared rules are trackable; runtime state is local.
+node_modules/
+node_modules_backup/
+dist/
+build/
+coverage/
+.vite/
+.cache/
+.turbo/
+.next/
+.gradle/
+.tmp-*/
+qa-screenshots-*/
+qa-*.png
+
 .maat/**
 !.maat/
 !.maat/policy.json

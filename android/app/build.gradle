@@ -1,0 +1,48 @@
+import org.gradle.internal.os.OperatingSystem
+
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.dryos.shooter"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.dryos.shooter"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+def npmExecutable = OperatingSystem.current().isWindows() ? "npm.cmd" : "npm"
+
+def buildWeb = tasks.register("buildWeb", Exec) {
+    workingDir rootProject.file("..")
+    commandLine npmExecutable, "run", "build"
+}
+
+def syncWebAssets = tasks.register("syncWebAssets", Sync) {
+    dependsOn buildWeb
+    from rootProject.file("../dist")
+    into layout.buildDirectory.dir("generated/assets/www")
+}
+
+android.sourceSets.main.assets.srcDir(syncWebAssets.map { it.destinationDir })
+
+tasks.configureEach { task ->
+    if (task.name.startsWith("merge") && task.name.endsWith("Assets")) {
+        task.dependsOn syncWebAssets
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.12.1"
+}

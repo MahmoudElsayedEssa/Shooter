@@ -1,4 +1,5 @@
-import type { GesturePoint } from "../input/DrawToShootInput";
+﻿import type { GesturePoint } from "../input/DrawToShootInput";
+import { clamp } from "../../core/math";
 
 export interface ShotInterpretationContext {
   readonly viewportWidth: number;
@@ -53,7 +54,7 @@ export function interpretShotIntent(
   const directDistance = getDistance(first, last);
   const speedPxPerMs = totalDistance / durationMs;
   const rawTargetX = mapEndpointToGoalX(last.x, context);
-  const rawTargetY = mapUpwardDeltaToGoalY(first.y - last.y, context);
+  const rawTargetY = mapEndpointToGoalY(last.y, context);
   const curve = getCurve(points, context.curveReferenceWidthPx ?? SHOT_INTERPRETER_LIMITS.curveReferenceWidthPx);
   const pathComplexity = directDistance === 0 ? 1 : totalDistance / directDistance;
   const gestureQuality = getGestureQuality(points, speedPxPerMs, pathComplexity);
@@ -72,15 +73,25 @@ export function interpretShotIntent(
 }
 
 function mapEndpointToGoalX(endpointX: number, context: ShotInterpretationContext): number {
-  const goalWidth = context.goalRightX - context.goalLeftX;
-  const horizontalRatio = clamp(endpointX / context.viewportWidth, 0, 1);
-  return context.goalLeftX + goalWidth * horizontalRatio;
+  // Map raw X endpoint to goal width range with small miss margin
+  const goalCenterX = (context.goalLeftX + context.goalRightX) / 2;
+  const goalHalfWidth = (context.goalRightX - context.goalLeftX) / 2;
+  const offset = endpointX - goalCenterX;
+  // Allow 12% overshoot for extreme angles â†’ miss
+  const missMarginRatio = 1.12;
+  return goalCenterX + clamp(offset, -goalHalfWidth * missMarginRatio, goalHalfWidth * missMarginRatio);
 }
 
-function mapUpwardDeltaToGoalY(upwardDelta: number, context: ShotInterpretationContext): number {
-  const verticalTravel = Math.max(1, context.ballY - context.goalTopY);
-  const heightRatio = clamp(upwardDelta / verticalTravel, 0, 1);
-  return context.goalBottomY - (context.goalBottomY - context.goalTopY) * heightRatio;
+function mapEndpointToGoalY(endpointY: number, context: ShotInterpretationContext): number {
+  // Remap: the gesture goes from ballY upward.
+  // We use a fixed logical drag distance (e.g. 180px) for a "full power" top-corner shot
+  // rather than making the user drag all the way to the top of the goal on screen.
+  const gestureRange = context.ballY - endpointY; // positive = drew upward
+  const maxDragPx = 180; // A reasonable drag distance on mobile
+  const ratio = clamp(gestureRange / maxDragPx, -0.1, 1.15);
+  // Map ratio to goal Y range: ratio 0 = bottom, ratio 1 = top
+  const goalHeight = context.goalBottomY - context.goalTopY;
+  return context.goalBottomY - goalHeight * ratio;
 }
 
 function getForce(speedPxPerMs: number): number {
@@ -175,8 +186,4 @@ function getPathDistance(points: readonly GesturePoint[]): number {
 
 function getDistance(a: GesturePoint, b: GesturePoint): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

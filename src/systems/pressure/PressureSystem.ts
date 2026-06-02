@@ -1,3 +1,5 @@
+﻿import { clamp } from "../../core/math";
+
 export type ResolvedOutcome = "goal" | "save" | "miss";
 
 export interface PressureContext {
@@ -74,8 +76,4 @@ function getPressurePresentation(pressure: number): PressurePresentation {
     trailBrightness: 0.6 + pressure * 0.4,
     uiUrgency: pressure
   };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

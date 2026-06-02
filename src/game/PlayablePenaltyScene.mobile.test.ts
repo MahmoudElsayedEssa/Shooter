@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest";
+import { getShotZoneRadius } from "../systems/input/DrawToShootInput";
+import { BALL_START, GAME_HEIGHT, GAME_WIDTH, GOAL_FRAME } from "./PlayablePenaltyScene";
+
+describe("PlayablePenaltyScene mobile portrait layout", () => {
+  it("uses the canonical portrait game size", () => {
+    expect(GAME_WIDTH).toBe(540);
+    expect(GAME_HEIGHT).toBe(960);
+  });
+
+  it("keeps the ball inside the lower playable area", () => {
+    expect(BALL_START.x).toBe(GAME_WIDTH / 2);
+    expect(BALL_START.y).toBeGreaterThan(GAME_HEIGHT * 0.75);
+    expect(BALL_START.y).toBeLessThan(GAME_HEIGHT - 80);
+  });
+
+  it("keeps the goal frame inside the portrait canvas", () => {
+    expect(GOAL_FRAME.leftX).toBeGreaterThanOrEqual(0);
+    expect(GOAL_FRAME.topY).toBeGreaterThanOrEqual(0);
+    expect(GOAL_FRAME.rightX).toBeLessThanOrEqual(GAME_WIDTH);
+    expect(GOAL_FRAME.bottomY).toBeLessThanOrEqual(GAME_HEIGHT);
+    expect(GOAL_FRAME.rightX - GOAL_FRAME.leftX).toBeGreaterThan(400);
+  });
+
+  it("uses a finger-sized shot zone on mobile widths", () => {
+    expect(getShotZoneRadius(540)).toBeCloseTo(75.6);
+    expect(getShotZoneRadius(320)).toBeCloseTo(44.8);
+    expect(getShotZoneRadius(240)).toBe(44);
+  });
+});

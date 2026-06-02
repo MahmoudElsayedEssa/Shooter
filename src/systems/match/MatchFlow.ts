@@ -38,6 +38,7 @@ export type MatchAction =
   | { readonly type: "begin_drawing" }
   | { readonly type: "invalid_gesture" }
   | { readonly type: "commit_shot"; readonly outcome: ShotOutcome }
+  | { readonly type: "resolve_shot"; readonly outcome: ShotOutcome }
   | { readonly type: "advance"; readonly elapsedMs: number }
   | { readonly type: "visibility_lost" }
   | { readonly type: "visibility_restored" }
@@ -49,6 +50,7 @@ const SRS_MATCH_ACTION_TYPES: ReadonlySet<MatchAction["type"]> = new Set([
   "begin_drawing",
   "invalid_gesture",
   "commit_shot",
+  "resolve_shot",
   "advance",
   "visibility_lost",
   "visibility_restored",
@@ -92,6 +94,25 @@ export function reduceMatchState(state: MatchState, action: MatchAction): MatchS
       return state.phase === "drawing"
         ? { ...transition(state, "shot_commit"), pendingOutcome: action.outcome }
         : state;
+    case "resolve_shot": {
+      // Explicit shot resolution: immediately update score and advance.
+      // Accepts from any active-play phase. The scene manages visual phases
+      // independently, so MatchState may still be in "aiming" when this fires.
+      const terminalPhases: ReadonlySet<MatchPhase> = new Set(["boot", "ready", "match_end", "pause"]);
+      if (terminalPhases.has(state.phase)) return state;
+      const newScore = scoreShot(state.score, action.outcome);
+      const newShotsTaken = state.shotsTaken + 1;
+      const nextPhase = isMatchDecided(newScore, newShotsTaken) ? "match_end" : "reset";
+      return {
+        ...state,
+        phase: nextPhase,
+        previousSafePhase: null,
+        score: newScore,
+        shotsTaken: newShotsTaken,
+        pendingOutcome: null,
+        timers: { shotCommitMs: 0, resolutionMs: 0, resetMs: 0 }
+      };
+    }
     case "advance":
       return advanceTimedState(state, action.elapsedMs);
     case "visibility_lost":

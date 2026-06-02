@@ -1,3 +1,5 @@
+﻿import { clamp, mix } from "../../core/math";
+
 export type FxOutcome = "goal" | "save" | "miss" | "rebound";
 export type FxReason = "inside_goal" | "keeper_contact" | "outside_goal" | "post_hit" | "slight_miss";
 export type FxKind =
@@ -311,12 +313,4 @@ function makeEffect(
     widthPx: overrides.widthPx ?? 0,
     gameplayDecision: false
   };
-}
-
-function mix(a: number, b: number, amount: number): number {
-  return a + (b - a) * clamp(amount, 0, 1);
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
