@@ -1,0 +1,26 @@
+{
+  "language": "TypeScript",
+  "buildTool": "npm",
+  "testRunner": "Vitest",
+  "framework": "Vite",
+  "buildCmd": "npm run build",
+  "testCmd": "npm test",
+  "scripts": {
+    "build": "tsc --noEmit \u0026\u0026 vite build",
+    "dev": "vite",
+    "test": "vitest run"
+  },
+  "dependencies": [
+    "phaser",
+    "phaser3spectorjs"
+  ],
+  "projectRules": [
+    "TypeScript strict mode enabled. No implicit any."
+  ],
+  "detectedAt": "2026-05-30T08:45:39Z",
+  "sources": [
+    "package.json",
+    "tsconfig.json",
+    "vite.config.ts"
+  ]
+}
