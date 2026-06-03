@@ -12,6 +12,7 @@ export type ScreenEvent =
   | "critical_assets_loaded"
   | "begin_drawing"
   | "commit_shot"
+  | "commit_acknowledged"
   | "flight_complete"
   | "resolution_complete"
   | "next_shot"
@@ -54,7 +55,7 @@ export const SCREEN_STATE_MACHINE: Readonly<Record<GameScreenId, readonly Screen
     { event: "commit_shot", to: "shot_commit" },
     { event: "pause", to: "pause" }
   ],
-  shot_commit: [{ event: "flight_complete", to: "ball_flight" }],
+  shot_commit: [{ event: "commit_acknowledged", to: "ball_flight" }],
   ball_flight: [{ event: "flight_complete", to: "resolution" }],
   resolution: [
     { event: "next_shot", to: "aiming" },

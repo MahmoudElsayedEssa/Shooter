@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
+import type { Point2D } from "../../core/types";
 import {
   createBallTrajectory,
   sampleBallFlight,
   getFlightDuration,
   getMaxCurveOffset,
   BALL_TRAJECTORY_LIMITS,
-  type Point2D,
 } from "./BallTrajectory";
 import type { ShotIntent } from "../shot/ShotInterpreter";
 

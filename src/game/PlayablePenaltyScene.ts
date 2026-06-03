@@ -1,6 +1,7 @@
 import Phaser from "phaser";
-import { createBallTrajectory, sampleBallFlight, type BallFlightSample, type Point2D } from "../systems/ball/BallTrajectory";
+import { createBallTrajectory, sampleBallFlight, type BallFlightSample } from "../systems/ball/BallTrajectory";
 import { resolveBallCollision, type BallOutcome, type CollisionReason, type GoalFrame, type KeeperState } from "../systems/collision/CollisionResolver";
+import type { Point2D, SafeAreaInsets } from "../core/types";
 import {
   decideGoalkeeperAction,
   type DiveDirection,
@@ -39,15 +40,17 @@ import {
 import {
   getCanvasSafeAreaInsets,
   isPortraitViewport,
-  PORTRAIT_GAME_SIZE,
-  type SafeAreaInsets
+  PORTRAIT_GAME_SIZE
 } from "../core/MobileViewport";
+
+import { playKickSound, playGoalSound, playSaveSound, playMissSound, playWhooshSound, closeAudioContext } from "../systems/audio/ProceduralAudio";
 
 // Note: planVisualEffects, planAdaptiveAudio, and getGoalkeeperAnimation
 // are integrated through the scene's presentation methods rather than called
 // directly as pure planners. Their design concepts (FX effects, audio events,
 // animation states) are implemented in the scene's tween/audio code.
 import { smoothStep } from "../core/math";
+import { setImageDisplayHeight } from "../core/phaser-helpers";
 
 export type PlayableOutcome = "goal" | "save" | "miss";
 
@@ -197,19 +200,7 @@ const CAMERA_FX = {
   shakePostHitDurationMs: 80,
 } as const;
 
-// ─── Low-end mode readiness (Phase 4A) ───
-// Toggle these to reduce FX for low-end devices. No settings UI yet.
-// HARD RESET: Currently unused because all camera/FX effects are disabled.
-// Kept for future re-enablement.
-// @ts-expect-error Retained config for when effects are re-enabled
-const _REDUCED_FX = {
-  enabled: false,
-  cameraZoomScale: 0.0,
-  shakeScale: 0.5,
-  trailSegments: 5,
-  vignetteAlphaScale: 0.5,
-  ballPulseEnabled: true,
-} as const;
+
 
 // ─── Layout Anchors (portrait game-space 540×960) ───
 const LAYOUT = {
@@ -223,8 +214,8 @@ const LAYOUT = {
   shotDots: { y: 58 },
 } as const;
 
-// Vite injects import.meta.env at build time; safe fallback for non-Vite envs
-const IS_DEV: boolean = !!(import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV;
+// Vite injects import.meta.env at build time; typed via vite/client in tsconfig
+const IS_DEV: boolean = import.meta.env?.DEV === true;
 
 type PlayableAssetKey =
   | "background"
@@ -356,7 +347,10 @@ export function createInitialPlayableSnapshot(): PlayableMatchSnapshot {
 export function planPlayableShot(
   points: readonly GesturePoint[],
   score: MatchScore,
-  shotsTaken: number
+  shotsTaken: number,
+  shotHistory: readonly DiveDirection[] = [],
+  consecutiveGoalsAgainst = 0,
+  consecutiveSaves = 0
 ): PlayableShotPlan {
   const validation = validateGesture(points);
   if (!validation.valid) {
@@ -376,15 +370,15 @@ export function planPlayableShot(
     pressure: shotsTaken / MATCH_LIMITS.maxShots,
     playerScore: score.player,
     goalkeeperScore: score.goalkeeper,
-    consecutiveGoalsAgainst: 0,
-    consecutiveSaves: 0,
+    consecutiveGoalsAgainst,
+    consecutiveSaves,
     matchPoint: shotsTaken >= MATCH_LIMITS.maxShots - 1,
     difficulty: 0.55,
     shotQuality: intent.gestureQuality,
     curve: intent.curve,
     targetX: intent.targetX,
     goalCenterX: getGoalCenterX(),
-    shotHistory: [],
+    shotHistory,
     difficultyPreset: "standard",
     shotIndex: shotsTaken,
     aiSeed: `playable-${shotsTaken}`
@@ -421,129 +415,6 @@ export function planPlayableShot(
   };
 }
 
-// ─── Audio context for procedural sounds ───
-let audioCtx: AudioContext | null = null;
-function getAudioCtx(): AudioContext | null {
-  if (audioCtx === null) {
-    try {
-      audioCtx = new AudioContext();
-    } catch {
-      return null;
-    }
-  }
-  return audioCtx;
-}
-
-function playKickSound(): void {
-  const ctx = getAudioCtx();
-  if (ctx === null) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "triangle";
-  osc.frequency.setValueAtTime(150, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.08);
-  gain.gain.setValueAtTime(0.6, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.12);
-
-  // Noise burst for attack
-  const bufferSize = Math.floor(ctx.sampleRate * 0.04);
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
-  const noise = ctx.createBufferSource();
-  const noiseGain = ctx.createGain();
-  noise.buffer = buffer;
-  noiseGain.gain.setValueAtTime(0.5, ctx.currentTime);
-  noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.06);
-  noise.connect(noiseGain).connect(ctx.destination);
-  noise.start(ctx.currentTime);
-}
-
-function playGoalSound(): void {
-  const ctx = getAudioCtx();
-  if (ctx === null) return;
-  // Net thud
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(220, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.15);
-  gain.gain.setValueAtTime(0.4, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.25);
-  // Crowd cheer (filtered noise)
-  const bufferSize = Math.floor(ctx.sampleRate * 0.5);
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
-  const noise = ctx.createBufferSource();
-  const noiseGain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = 1200;
-  filter.Q.value = 0.8;
-  noise.buffer = buffer;
-  noiseGain.gain.setValueAtTime(0, ctx.currentTime + 0.08);
-  noiseGain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.2);
-  noiseGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
-  noise.connect(filter).connect(noiseGain).connect(ctx.destination);
-  noise.start(ctx.currentTime + 0.08);
-}
-
-function playSaveSound(): void {
-  const ctx = getAudioCtx();
-  if (ctx === null) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "square";
-  osc.frequency.setValueAtTime(800, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.05);
-  gain.gain.setValueAtTime(0.3, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.1);
-}
-
-function playMissSound(): void {
-  const ctx = getAudioCtx();
-  if (ctx === null) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(300, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.15);
-  gain.gain.setValueAtTime(0.15, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.2);
-}
-
-function playWhooshSound(intensity: number): void {
-  const ctx = getAudioCtx();
-  if (ctx === null) return;
-  const bufferSize = Math.floor(ctx.sampleRate * 0.2);
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
-  const noise = ctx.createBufferSource();
-  const gain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-  filter.type = "highpass";
-  filter.frequency.setValueAtTime(2000, ctx.currentTime);
-  filter.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.15);
-  noise.buffer = buffer;
-  gain.gain.setValueAtTime(0.2 * intensity, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-  noise.connect(filter).connect(gain).connect(ctx.destination);
-  noise.start(ctx.currentTime);
-}
 
 // ─── Scene ───
 export class PlayablePenaltyScene extends Phaser.Scene {
@@ -553,6 +424,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   private outcome: PlayableOutcome | "none" = "none";
   private gesturePoints: readonly GesturePoint[] = [];
   private activePlan: PlayableShotPlan | null = null;
+  private shotDirectionHistory: DiveDirection[] = [];
   private flightElapsedMs = 0;
   private pressureState: PressureState | null = null;
   private heroResult: HeroMomentResult | null = null;
@@ -631,6 +503,10 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   }
 
   preload(): void {
+    this.load.on("loaderror", (file: Phaser.Loader.File) => {
+      console.warn(`[ASSET] Failed to load: ${file.key} (${file.url})`);
+    });
+
     // Loading screen
     this.cameras.main.setBackgroundColor("#0a0e1a");
     this.loadingText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, "PENALTY SHOOTER", {
@@ -902,6 +778,23 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       alreadyDecided: false,
       resolvedOutcome: "miss"
     });
+
+    this.events.on("shutdown", this.shutdown, this);
+  }
+
+  shutdown(): void {
+    document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    window.removeEventListener("resize", this.onWindowResize);
+    window.removeEventListener("orientationchange", this.onWindowResize);
+
+    if (this.puppet) {
+      this.puppet.destroy();
+      this.puppet = null;
+    }
+
+    this.stopBallPulse();
+
+    closeAudioContext();
   }
 
   override update(_: number, deltaMs: number): void {
@@ -1030,7 +923,14 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       return;
     }
 
-    this.activePlan = planPlayableShot(this.gesturePoints, this.matchState.score, this.matchState.shotsTaken);
+    this.activePlan = planPlayableShot(
+      this.gesturePoints,
+      this.matchState.score,
+      this.matchState.shotsTaken,
+      this.shotDirectionHistory,
+      this.consecutiveGoalsAgainst,
+      this.consecutiveSaves
+    );
 
     // HARD RESET: Dev force outcome override
     if (IS_DEV && this._devForceOutcome !== null) {
@@ -1043,6 +943,8 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       this._devForceDive = null;
     }
 
+    // Kill idle bob before flight so it doesn't fight with dive animation
+    this.tweens.killTweensOf(this.keeper);
     this.phase = "ball_flight";
     this.flightElapsedMs = 0;
     this.flightTrailBuffer = [];
@@ -1159,18 +1061,39 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       resolvedOutcome: plan.outcome
     });
 
-    // Detect hero moments
+    // Track dive direction for pattern memory
+    this.shotDirectionHistory = [...this.shotDirectionHistory, plan.keeperDecision.tactical.diveDirection].slice(-5);
+
+    // Compute actual distances for hero moment detection
+    const keeperReach = plan.keeperDecision.physical.reachRadiusPx;
+    const actualBallDistFromReach = plan.contactPoint !== null
+      ? Math.max(0, Math.hypot(
+          plan.ballSamples.at(-1)!.x - plan.contactPoint.x,
+          plan.ballSamples.at(-1)!.y - plan.contactPoint.y
+        ) - keeperReach)
+      : keeperReach; // no contact = far from keeper
+    const actualReachRatio = plan.contactT !== null && plan.contactPoint !== null
+      ? Math.min(1, Math.hypot(
+          plan.contactPoint.x - getGoalCenterX(),
+          plan.contactPoint.y - KEEPER_Y
+        ) / Math.max(1, keeperReach))
+      : 0;
+    const shotDir = plan.intent.targetX < getGoalCenterX() ? "left" : plan.intent.targetX > getGoalCenterX() ? "right" : "center";
+    const keeperDoveCorrect = plan.keeperDecision.tactical.diveDirection === shotDir;
+    const curvedAway = (plan.intent.curve > 0.3 && plan.keeperDecision.tactical.diveDirection === "left")
+      || (plan.intent.curve < -0.3 && plan.keeperDecision.tactical.diveDirection === "right");
+
     this.heroResult = detectHeroMoments({
       finalShot: this.matchState.shotsTaken >= MATCH_LIMITS.maxShots,
       scoreDiff: this.matchState.score.player - this.matchState.score.goalkeeper,
       outcome: plan.outcome,
-      ballDistanceFromKeeperReachPx: 20,
+      ballDistanceFromKeeperReachPx: actualBallDistFromReach,
       keeperReachPx: plan.keeperDecision.physical.reachRadiusPx,
-      saveContactReachRatio: 0.7,
+      saveContactReachRatio: actualReachRatio,
       curve: plan.intent.curve,
-      postContact: false,
-      keeperDoveCorrectDirection: plan.keeperDecision.tactical.diveDirection !== "center",
-      ballCurvedAwayFromKeeper: Math.abs(plan.intent.curve) > 0.5
+      postContact: plan.collisionReason === "post_hit",
+      keeperDoveCorrectDirection: keeperDoveCorrect,
+      ballCurvedAwayFromKeeper: curvedAway
     });
 
     this.outcome = plan.outcome;
@@ -1242,10 +1165,20 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.outcome = "none";
     this.activePlan = null;
     this.flightElapsedMs = 0;
-    this.pressureState = null;
+    this.pressureState = calculatePressure({
+      shotIndex: 0,
+      maxShots: MATCH_LIMITS.maxShots,
+      playerScore: 0,
+      goalkeeperScore: 0,
+      matchPoint: false,
+      finalShot: false,
+      alreadyDecided: false,
+      resolvedOutcome: "miss"
+    });
     this.heroResult = null;
     this.consecutiveGoalsAgainst = 0;
     this.consecutiveSaves = 0;
+    this.shotDirectionHistory = [];
     // HARD RESET: canonical ball reset
     this.setBallVisual(BALL_START.x, BALL_START.y, 1.0);
     this.ball.setRotation(0);
@@ -1653,7 +1586,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
         ? contactSample.x + 40
         : diveDir === "right"
           ? contactSample.x - 40
-          : contactSample.x + (Math.random() > 0.5 ? 30 : -30);
+          : contactSample.x + (this.matchState.shotsTaken % 2 === 0 ? 30 : -30);
       const deflectY = contactSample.y + 50;
       this.tweens.add({
         targets: this.ball,
@@ -2493,9 +2426,4 @@ function getResultColor(outcome: PlayableOutcome | "none"): string {
   if (outcome === "save") return "#4ade80";
   if (outcome === "miss") return "#f97316";
   return "#f8fafc";
-}
-
-function setImageDisplayHeight(image: Phaser.GameObjects.Image, height: number): void {
-  const width = (image.frame.width / image.frame.height) * height;
-  image.setDisplaySize(width, height);
 }

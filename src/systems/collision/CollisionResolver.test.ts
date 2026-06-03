@@ -5,7 +5,8 @@ import {
   type GoalFrame,
   type KeeperState,
 } from "./CollisionResolver";
-import { createBallTrajectory, type Point2D } from "../ball/BallTrajectory";
+import { createBallTrajectory } from "../ball/BallTrajectory";
+import type { Point2D } from "../../core/types";
 import type { ShotIntent } from "../shot/ShotInterpreter";
 
 // ─── Helpers ───

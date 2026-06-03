@@ -170,7 +170,7 @@ export function createTrailState(
     opacity: Math.min(fadeOpacity, INPUT_LIMITS.maxTrailGoalOpacity),
     communicatesCurve: points.length >= 3,
     communicatesForce: pathDistance(points) >= INPUT_LIMITS.minTotalDistancePx,
-    blocksGoal: Math.min(fadeOpacity, INPUT_LIMITS.maxTrailGoalOpacity) > INPUT_LIMITS.maxTrailGoalOpacity,
+    blocksGoal: fadeOpacity > INPUT_LIMITS.maxTrailGoalOpacity,
     curveDirection: getCurveDirection(points),
     force: pathDistance(points),
     pointsCleared: elapsedSinceCommitMs !== null && elapsedSinceCommitMs > INPUT_LIMITS.trailFadeMaxMs

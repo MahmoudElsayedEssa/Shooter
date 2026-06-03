@@ -3,12 +3,7 @@ export interface LogicalSize {
   readonly height: number;
 }
 
-export interface SafeAreaInsets {
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
-  readonly left: number;
-}
+import type { SafeAreaInsets } from "./types";
 
 export const PORTRAIT_GAME_SIZE: LogicalSize = Object.freeze({
   width: 540,

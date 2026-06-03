@@ -1,9 +1,4 @@
-export interface SafeAreaInsets {
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
-  readonly left: number;
-}
+import type { SafeAreaInsets } from "./types";
 
 export interface MobileViewportInput {
   readonly cssWidth: number;

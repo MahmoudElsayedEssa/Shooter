@@ -9,12 +9,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "phaser": "^3.90.0",
-    "phaser3spectorjs": "^0.0.8"
+    "phaser": "^3.90.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
     "jsdom": "^29.1.1",
+    "phaser3spectorjs": "^0.0.8",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.1.4"

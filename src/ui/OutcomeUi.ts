@@ -1,12 +1,7 @@
+import type { Rect } from "../core/types";
+
 export type UiOutcome = "goal" | "save" | "miss" | "none";
 export type MissReason = "outside_frame" | "post_hit";
-
-export interface Rect {
-  readonly left: number;
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
-}
 
 export interface UiContext {
   readonly playerScore: number;
@@ -36,28 +31,6 @@ export interface OutcomeUi {
   readonly panels: readonly Rect[];
 }
 
-export type UiLocale = "en" | "ar";
-
-export interface AccessibilityUi {
-  readonly textContrastRatio: number;
-  readonly minTouchZonePx: number;
-  readonly ballInteractionZonePx: number;
-  readonly reducedMotion: {
-    readonly shakeMultiplier: number;
-    readonly zoomPulseMultiplier: number;
-    readonly slowMotionFrequencyMultiplier: number;
-    readonly flashIntensityMultiplier: number;
-  };
-  readonly locale: UiLocale;
-  readonly direction: "ltr" | "rtl";
-  readonly strings: {
-    readonly scoreLabel: string;
-    readonly shotLabel: string;
-    readonly drawHint: string;
-    readonly restartLabel: string;
-  };
-}
-
 export function getOutcomeUi(context: UiContext): OutcomeUi {
   const panels = getPanels(context.viewportWidth, context.viewportHeight);
   return {
@@ -70,45 +43,6 @@ export function getOutcomeUi(context: UiContext): OutcomeUi {
     outcomeVisibleAfterMs: context.outcome === "none" ? 0 : 420,
     safeLayout: panels.every((panel) => !getProtectedRects(context).some((rect) => overlaps(panel, rect))),
     panels
-  };
-}
-
-export function getAccessibilityUi(locale: UiLocale, reducedMotion: boolean): AccessibilityUi {
-  const strings =
-    locale === "ar"
-      ? {
-          scoreLabel: "النتيجة",
-          shotLabel: "التسديدة",
-          drawHint: "ارسم التسديدة",
-          restartLabel: "إعادة"
-        }
-      : {
-          scoreLabel: "Score",
-          shotLabel: "Shot",
-          drawHint: "Draw your shot",
-          restartLabel: "Restart"
-        };
-
-  return {
-    textContrastRatio: 7,
-    minTouchZonePx: 48,
-    ballInteractionZonePx: 64,
-    reducedMotion: reducedMotion
-      ? {
-          shakeMultiplier: 0.25,
-          zoomPulseMultiplier: 0.25,
-          slowMotionFrequencyMultiplier: 0.4,
-          flashIntensityMultiplier: 0.2
-        }
-      : {
-          shakeMultiplier: 1,
-          zoomPulseMultiplier: 1,
-          slowMotionFrequencyMultiplier: 1,
-          flashIntensityMultiplier: 1
-        },
-    locale,
-    direction: locale === "ar" ? "rtl" : "ltr",
-    strings
   };
 }
 

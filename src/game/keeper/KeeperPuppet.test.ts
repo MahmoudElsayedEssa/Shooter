@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { Point2D } from "../../core/types";
 import {
   planPuppetSave,
   selectGlove,
@@ -7,8 +8,7 @@ import {
   MAX_VISUAL_ARM_REACH_PX,
   PUPPET_MOOD_TIMING,
   type PuppetPlan,
-  type PuppetMood,
-  type Point2D,
+  type PuppetMood
 } from "./KeeperPuppetTypes";
 
 // ─── Helpers ───

@@ -1,5 +1,5 @@
 import { clamp, lerp, smoothStep } from "../../core/math";
-import type { Point2D } from "../ball/BallTrajectory";
+import type { Point2D } from "../../core/types";
 import type { DiveDirection, GoalkeeperMood, ShotResult } from "../goalkeeper/GoalkeeperAI";
 
 export type KeeperAnimationPhase =

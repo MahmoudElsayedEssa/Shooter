@@ -11,13 +11,15 @@
  */
 
 import Phaser from "phaser";
+import type { Point2D } from "../../core/types";
+import { smoothStep } from "../../core/math";
+import { setImageDisplayHeight } from "../../core/phaser-helpers";
 import {
   type PuppetPhase,
   type PuppetMood,
   type PuppetPlan,
   type PuppetDebugState,
   type GloveSide,
-  type Point2D,
   MAX_VISUAL_ARM_REACH_PX,
   CONTACT_MARKER,
   computePuppetPhase,
@@ -40,17 +42,7 @@ export interface KeeperPuppetConfig {
   readonly maxStretch: number;
 }
 
-// ─── Helpers ───
 
-function smoothStep(t: number): number {
-  const c = Math.max(0, Math.min(1, t));
-  return c * c * (3 - 2 * c);
-}
-
-function setImageDisplayHeight(image: Phaser.GameObjects.Image, height: number): void {
-  const ratio = image.frame.width / image.frame.height;
-  image.setDisplaySize(ratio * height, height);
-}
 
 // ─── KeeperPuppet Class ───
 

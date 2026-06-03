@@ -1,4 +1,5 @@
-import { sampleBallFlight, type BallTrajectory, type Point2D } from "../ball/BallTrajectory";
+import { sampleBallFlight, type BallTrajectory } from "../ball/BallTrajectory";
+import type { Point2D } from "../../core/types";
 
 export type BallOutcome = "goal" | "save" | "miss" | "rebound";
 export type CollisionReason = "inside_goal" | "keeper_contact" | "outside_goal" | "post_hit" | "slight_miss";

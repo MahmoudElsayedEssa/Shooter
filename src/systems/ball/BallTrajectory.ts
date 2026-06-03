@@ -1,10 +1,7 @@
-﻿import type { ShotIntent } from "../shot/ShotInterpreter";
+import { SHOT_INTERPRETER_LIMITS, type ShotIntent } from "../shot/ShotInterpreter";
 import { clamp, lerp } from "../../core/math";
 
-export interface Point2D {
-  readonly x: number;
-  readonly y: number;
-}
+import type { Point2D } from "../../core/types";
 
 export interface BallTrajectory {
   readonly start: Point2D;
@@ -79,7 +76,10 @@ export function getMaxCurveOffset(viewportWidth: number): number {
 }
 
 export function getFlightDuration(force: number): number {
-  const forceRatio = clamp((force - 0.55) / (1.35 - 0.55), 0, 1);
+  const forceRatio = clamp(
+    (force - SHOT_INTERPRETER_LIMITS.minForce) / (SHOT_INTERPRETER_LIMITS.maxForce - SHOT_INTERPRETER_LIMITS.minForce),
+    0, 1
+  );
   return lerp(BALL_TRAJECTORY_LIMITS.maxDurationMs, BALL_TRAJECTORY_LIMITS.minDurationMs, forceRatio);
 }
 

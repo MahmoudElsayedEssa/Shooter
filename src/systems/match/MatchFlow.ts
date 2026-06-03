@@ -133,6 +133,10 @@ export function isMatchDecided(score: MatchScore, shotsTaken: number): boolean {
   return shotsTaken >= MATCH_LIMITS.maxShots || Math.abs(score.player - score.goalkeeper) > remainingShots;
 }
 
+/**
+ * Score a shot outcome. Both "save" and "miss" award the goalkeeper a point.
+ * This is intentional: in this game format, any non-goal benefits the keeper.
+ */
 export function scoreShot(score: MatchScore, outcome: ShotOutcome): MatchScore {
   return outcome === "goal"
     ? { ...score, player: score.player + 1 }
@@ -157,17 +161,13 @@ function advanceTimedState(state: MatchState, elapsedMs: number): MatchState {
 
   if (state.phase === "resolution") {
     const resolutionMs = state.timers.resolutionMs + elapsedMs;
-    if (resolutionMs < MATCH_LIMITS.resolutionMs || state.pendingOutcome === null) {
+    if (resolutionMs < MATCH_LIMITS.resolutionMs) {
       return { ...state, timers: { ...state.timers, resolutionMs } };
     }
 
-    const score = scoreShot(state.score, state.pendingOutcome);
-    const shotsTaken = state.shotsTaken + 1;
-    const phase = isMatchDecided(score, shotsTaken) ? "match_end" : "reset";
+    const phase = isMatchDecided(state.score, state.shotsTaken) ? "match_end" : "reset";
     return {
       ...transition(state, phase),
-      score,
-      shotsTaken,
       pendingOutcome: null,
       timers: { ...state.timers, resolutionMs }
     };

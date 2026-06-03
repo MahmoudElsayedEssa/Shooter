@@ -12,11 +12,7 @@ export type PuppetPhase = "idle" | "anticipation" | "dive_travel" | "save_contac
 export type PuppetMood = "calm" | "focused" | "nervous" | "aggressive" | "desperate";
 export type GloveSide = "left" | "right";
 
-export interface Point2D {
-  readonly x: number;
-  readonly y: number;
-}
-
+import type { Point2D } from "../../core/types";
 export interface PuppetPhaseTiming {
   /** Duration of anticipation phase as fraction of total flight [0,1] */
   readonly anticipationEnd: number;
