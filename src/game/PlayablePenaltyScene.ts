@@ -553,8 +553,10 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.matchState = reduceMatchState(this.matchState, { type: "ready_to_aim" });
 
     // ── Background ──
-    const background = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, PLAYABLE_ASSET_BY_ID.background.key)
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+    const bgHeight = 1600;
+    const bgY = 174; // Aligns the grass-stands horizon at Y = 390 exactly
+    const background = this.add.image(GAME_WIDTH / 2, bgY, PLAYABLE_ASSET_BY_ID.background.key)
+      .setDisplaySize(GAME_WIDTH, bgHeight)
       .setTint(VISUAL_STYLE.backgroundTint);
     this.layers.field.add(background);
 
