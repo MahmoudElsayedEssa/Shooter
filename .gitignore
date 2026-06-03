@@ -2,7 +2,6 @@
 # Ma'at Git sharing: shared rules are trackable; runtime state is local.
 node_modules/
 node_modules_backup/
-dist/
 build/
 coverage/
 .vite/
