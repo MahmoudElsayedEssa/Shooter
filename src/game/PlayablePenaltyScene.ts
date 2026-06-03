@@ -252,7 +252,7 @@ export interface PlayableGameplayAsset {
 }
 
 export const PLAYABLE_GAMEPLAY_ASSETS: readonly PlayableGameplayAsset[] = [
-  { id: "background", key: "playable-background-city-field", path: "assets/gameplay/background-city-field.webp" },
+  { id: "background", key: "playable-background-city-field", path: "assets/gameplay/background-city-field.png" },
   { id: "goalBack", key: "playable-goal-back-net", path: "assets/gameplay/goal-back-net.png" },
   { id: "goalFront", key: "playable-goal-front-frame", path: "assets/gameplay/goal-front-frame.png" },
   { id: "ball", key: "playable-ball", path: "assets/gameplay/ball.png" },
