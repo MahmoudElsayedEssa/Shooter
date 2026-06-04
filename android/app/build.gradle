@@ -1,5 +1,3 @@
-import org.gradle.internal.os.OperatingSystem
-
 plugins {
     id "com.android.application"
 }
@@ -22,15 +20,10 @@ android {
     }
 }
 
-def npmExecutable = OperatingSystem.current().isWindows() ? "npm.cmd" : "npm"
-
-def buildWeb = tasks.register("buildWeb", Exec) {
-    workingDir rootProject.file("..")
-    commandLine npmExecutable, "run", "build"
-}
-
+// ─── Web asset sync ───
+// Copies pre-built web files from ../dist into the APK assets.
+// No npm/vite dependency — just run `npm run build` once before building the APK.
 def syncWebAssets = tasks.register("syncWebAssets", Sync) {
-    dependsOn buildWeb
     from rootProject.file("../dist")
     into layout.buildDirectory.dir("generated/assets/www")
 }

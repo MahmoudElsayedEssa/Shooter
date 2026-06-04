@@ -1,21 +1,37 @@
-# Android Wrapper
+# Android — e& Penalty Challenge
 
-This project wraps the Vite/Phaser web game in a portrait-only Android WebView.
+A standalone native Android app wrapper using **WebView** to run the pre-built web game.  
+**No npm, no Vite** — just open in Android Studio and run.
 
-## Build
+## Architecture
 
-From `android/`:
-
-```powershell
-.\gradlew.bat assembleDebug
+```
+android/
+├── app/
+│   ├── build.gradle                          ← Copies dist/ into APK assets
+│   └── src/main/
+│       ├── java/.../MainActivity.java        ← WebView fullscreen loader
+│       └── AndroidManifest.xml
+├── build.gradle
+├── settings.gradle
+└── gradlew / gradlew.bat
 ```
 
-The Gradle build runs `npm run build`, copies `dist/` into generated Android assets, and loads it through `WebViewAssetLoader` at `https://shooter.local/index.html`.
+## Setup
 
-The native wrapper is intentionally small:
+1. **Build the web game** (one time, on any machine with Node):
+   ```bash
+   npm run build
+   ```
 
-- portrait-only `MainActivity`
-- bundled offline web assets
-- JavaScript and DOM storage enabled for Phaser
-- system UI hidden for full-screen play
-- WebView overscroll and scrollbars disabled
+2. **Open `android/` in Android Studio** — the Gradle sync will automatically
+   copy `../dist/` into the APK's assets at build time.
+
+3. **Run** on an emulator or physical device.
+
+## Requirements
+
+- Android Studio (latest)
+- Android SDK 35 (compileSdk)
+- minSdk 24 (Android 7.0+)
+- No npm/Node needed on the build machine
