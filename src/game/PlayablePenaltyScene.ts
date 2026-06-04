@@ -43,7 +43,8 @@ import {
   PORTRAIT_GAME_SIZE
 } from "../core/MobileViewport";
 
-import { playKickSound, playGoalSound, playSaveSound, playMissSound, playWhooshSound, closeAudioContext } from "../systems/audio/ProceduralAudio";
+import { playKickSound, playGoalSound, playSaveSound, playMissSound, playWhooshSound, playPostHitSound, playCrowdGaspSound, playDiveGruntSound, playCrowdGroanSound, closeAudioContext } from "../systems/audio/ProceduralAudio";
+import { ParticleEmitter } from "../systems/vfx/GameParticles";
 
 // Note: planVisualEffects, planAdaptiveAudio, and getGoalkeeperAnimation
 // are integrated through the scene's presentation methods rather than called
@@ -98,10 +99,11 @@ export const GOAL_FRAME: GoalFrame = Object.freeze({
 });
 const KEEPER_Y = 300;
 const FLIGHT_SAMPLE_COUNT = 24;
-const VISUAL_KEEPER_Y = 340;
+// Keeper feet at GOAL_FRAME.bottomY (390): centerY = 390 - idleHeight/2 = 390 - 60 = 330
+const VISUAL_KEEPER_Y = 330;
 const VISUAL_KEEPER_DIVE_Y = 345;
-const VISUAL_GOAL_CENTER = Object.freeze({ x: 270, y: 275 });
-const BALL_BASE_DISPLAY_SIZE = 30;
+const VISUAL_GOAL_CENTER = Object.freeze({ x: 270, y: 278 });
+const BALL_BASE_DISPLAY_SIZE = 48;
 const FONT_FAMILY = "'Inter', 'Segoe UI', Arial, sans-serif";
 
 // ─── HARD RESET: Camera effects disabled until gameplay is stable ───
@@ -113,8 +115,8 @@ const KEEPER_PUPPET_ENABLED = false;
 // ─── Keeper Canonical Sizes (max allowed display height per pose) ───
 const KEEPER_CANONICAL = {
   maxIdleHeight: 130,
-  maxDiveHeight: 112,
-  maxSaveHeight: 118,
+  maxDiveHeight: 115,
+  maxSaveHeight: 120,
   // Max allowed stretch factor during squash/stretch animation
   maxStretch: 1.03,
 } as const;
@@ -130,10 +132,10 @@ const KEEPER_MOOD_TINTS: Readonly<Record<string, number | null>> = {
 
 // ─── Visual Style & Tuning Config (Phase 1 + 1B + 2A) ───
 const VISUAL_STYLE = {
-  // Background treatment
-  backgroundTint: 0xbbbbbb,
-  darkOverlayAlpha: 0.24,
-  sideVignetteAlpha: 0.35,
+  // Background treatment — lighter to show realistic stadium BG
+  backgroundTint: 0xdddddd,
+  darkOverlayAlpha: 0.10,
+  sideVignetteAlpha: 0.20,
 
   // Goal interior shadow (blocks stadium light bleed behind net)
   goalInteriorColor: 0x0a0e1a,
@@ -149,14 +151,14 @@ const VISUAL_STYLE = {
   keeperShadowColor: 0x000000,
   keeperShadowAlpha: 0.28,
   keeperShadowWidth: 72,
-  keeperShadowHeight: 14,
+  keeperShadowHeight: 16,
 
   // Ball shadow
   ballShadowAlpha: 0.30,
 
   // Drawing trail colors (player’s free gesture)
-  trailCoreColor: 0xfacc15,
-  trailGlowColor: 0xfacc15,
+  trailCoreColor: 0xe00800,
+  trailGlowColor: 0xe00800,
   trailShadowColor: 0x111827,
 
   // Ball flight trail (actual ball path after release) — Phase 2A
@@ -297,13 +299,13 @@ const KEEPER_TEXTURE_BY_POSE: Readonly<Record<PuppetKeeperPose, string>> = {
   miss: PLAYABLE_ASSET_BY_ID.keeperMiss.key
 };
 
-// Keeper heights — sized to fit believably inside goal (goal opening ~185px)
+// Keeper heights — sized to fit believably inside realistic background goal
 const KEEPER_HEIGHT_BY_PUPPET_POSE: Readonly<Record<PuppetKeeperPose, number>> = {
   idle: 120,
   ready: 120,
-  diveLeft: 90,
-  diveRight: 90,
-  save: 90,
+  diveLeft: 95,
+  diveRight: 95,
+  save: 95,
   miss: 120
 };
 
@@ -462,6 +464,10 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   private sideVignette!: Phaser.GameObjects.Graphics;
   private goalInterior!: Phaser.GameObjects.Graphics;
 
+  // VFX: Particles + Flash overlay
+  private particles!: ParticleEmitter;
+  private flashOverlay!: Phaser.GameObjects.Rectangle;
+
   // Emergency Recovery: debug info for last shot
   private lastShotDebugInfo: {
     targetX: number; targetY: number; force: number; curve: number;
@@ -529,7 +535,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.load.on("progress", (value: number) => {
       this.loadingBar.clear();
       this.loadingBar.fillStyle(0x1e293b, 1).fillRoundedRect(barX, barY, barWidth, barHeight, 3);
-      this.loadingBar.fillStyle(0xfacc15, 1).fillRoundedRect(barX, barY, barWidth * value, barHeight, 3);
+      this.loadingBar.fillStyle(0xe00800, 1).fillRoundedRect(barX, barY, barWidth * value, barHeight, 3);
     });
 
     this.load.on("complete", () => {
@@ -553,11 +559,11 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.matchState = reduceMatchState(this.matchState, { type: "ready_to_aim" });
 
     // ── Background ──
-    const bgHeight = 1600;
-    const bgY = 174; // Aligns the grass-stands horizon at Y = 390 exactly
+    const bgHeight = 1200;
+    const bgY = GAME_HEIGHT / 2;
     const background = this.add.image(GAME_WIDTH / 2, bgY, PLAYABLE_ASSET_BY_ID.background.key)
       .setDisplaySize(GAME_WIDTH, bgHeight)
-      .setTint(VISUAL_STYLE.backgroundTint);
+      .setTint(0x99bb99);
     this.layers.field.add(background);
 
     // Dark overlay — reduces stadium brightness so gameplay sprites pop
@@ -591,15 +597,14 @@ export class PlayablePenaltyScene extends Phaser.Scene {
 
     // Ball shadow on field
     this.ballShadow = this.add.ellipse(
-      BALL_START.x, BALL_START.y + 12, 42, 12,
+      BALL_START.x, BALL_START.y + 16, 60, 16,
       0x000000, VISUAL_STYLE.ballShadowAlpha
     );
     this.layers.field.add(this.ballShadow);
 
-    // ── Goal interior shadow — dark panel behind net to block stadium light bleed ──
+    // ── Goal interior shadow — subtle darkening behind net area for depth ──
     this.goalInterior = this.add.graphics();
-    this.goalInterior.fillStyle(VISUAL_STYLE.goalInteriorColor, VISUAL_STYLE.goalInteriorAlpha);
-    // Elliptical to avoid harsh rectangle; slightly smaller than goal to feel recessed
+    this.goalInterior.fillStyle(VISUAL_STYLE.goalInteriorColor, 0.15);
     this.goalInterior.fillEllipse(
       VISUAL_GOAL_CENTER.x, VISUAL_GOAL_CENTER.y + 10,
       GOAL_FRAME.rightX - GOAL_FRAME.leftX - 30,
@@ -607,30 +612,10 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     );
     this.layers.backGoal.add(this.goalInterior);
 
-    // Goal rendered as simple Graphics — no image assets, no visual confusion.
-    // goalInterior shadow already added above for depth.
-    // Goal back net removed — was creating "two goals" look.
-    const goalGfx = this.add.graphics();
-    // Posts
-    goalGfx.fillStyle(0xf0f0f0, 1);
-    goalGfx.fillRect(GOAL_FRAME.leftX - 4, GOAL_FRAME.topY, 8, GOAL_FRAME.bottomY - GOAL_FRAME.topY); // left post
-    goalGfx.fillRect(GOAL_FRAME.rightX - 4, GOAL_FRAME.topY, 8, GOAL_FRAME.bottomY - GOAL_FRAME.topY); // right post
-    // Crossbar
-    goalGfx.fillRect(GOAL_FRAME.leftX - 4, GOAL_FRAME.topY - 4, GOAL_FRAME.rightX - GOAL_FRAME.leftX + 8, 8);
-    // Subtle net lines
-    goalGfx.lineStyle(1, 0xcccccc, 0.12);
-    for (let nx = GOAL_FRAME.leftX + 20; nx < GOAL_FRAME.rightX; nx += 20) {
-      goalGfx.lineBetween(nx, GOAL_FRAME.topY, nx, GOAL_FRAME.bottomY);
-    }
-    for (let ny = GOAL_FRAME.topY + 20; ny < GOAL_FRAME.bottomY; ny += 20) {
-      goalGfx.lineBetween(GOAL_FRAME.leftX, ny, GOAL_FRAME.rightX, ny);
-    }
-    this.layers.frontGoal.add(goalGfx);
-
     // ── Keeper ──
     // Keeper ground shadow (drawn before keeper so keeper is on top)
     this.keeperShadow = this.add.ellipse(
-      getGoalCenterX(), VISUAL_KEEPER_Y + 50,
+      getGoalCenterX(), GOAL_FRAME.bottomY + 4, // shadow at keeper's feet on goal line
       VISUAL_STYLE.keeperShadowWidth, VISUAL_STYLE.keeperShadowHeight,
       VISUAL_STYLE.keeperShadowColor, VISUAL_STYLE.keeperShadowAlpha
     );
@@ -671,14 +656,17 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.layers.ball.add(this.ball);
     this.setBallVisual(BALL_START.x, BALL_START.y, 1.0);
 
-    // Goal front frame image — HIDDEN until visual confusion is resolved.
-    // Using Graphics-drawn goal above instead.
-    const goalFront = this.add.image(VISUAL_GOAL_CENTER.x, VISUAL_GOAL_CENTER.y, PLAYABLE_ASSET_BY_ID.goalFront.key)
-      .setDisplaySize(GOAL_FRAME.rightX - GOAL_FRAME.leftX + 40, GOAL_FRAME.bottomY - GOAL_FRAME.topY + 35)
-      .setTint(VISUAL_STYLE.goalFrameTint)
-      .setOrigin(0.5, 0.5)
-      .setVisible(false); // HIDDEN
-    this.layers.frontGoal.add(goalFront);
+    // ── Goal scene — realistic goalpost+net+crowd image as back layer (behind keeper) ──
+    // Image layout: crowd (0-30%), goal+net (30-65%), grass (65-100%)
+    // Anchor at crossbar (30% from top) → place at GOAL_FRAME.topY
+    const crossbarFraction = 0.30;
+    const postBaseFraction = 0.65;
+    const goalVisualHeight = GOAL_FRAME.bottomY - GOAL_FRAME.topY; // 225px
+    const goalImgHeight = goalVisualHeight / (postBaseFraction - crossbarFraction); // ~643px
+    const goalScene = this.add.image(GAME_WIDTH / 2, GOAL_FRAME.topY, PLAYABLE_ASSET_BY_ID.goalFront.key)
+      .setDisplaySize(GAME_WIDTH, goalImgHeight)
+      .setOrigin(0.5, crossbarFraction);
+    this.layers.backGoal.add(goalScene);
 
     // Goal post contact shadow (ground shadow under the goal frame)
     this.goalPostShadow = this.add.graphics();
@@ -709,6 +697,14 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.layers.effects.add(this.fxGraphics);
     this.layers.effects.add(this.saveBurst);
 
+    // VFX: Particle emitter (for grass kick, confetti, flight sparkles)
+    this.particles = new ParticleEmitter(this, 150);
+    this.particles.addToContainer(this.layers.effects);
+
+    // Flash overlay (for goal/miss screen flash)
+    this.flashOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xffffff, 0)
+      .setDepth(200);
+    this.layers.ui.add(this.flashOverlay);
     // Vignette overlay (UI layer, drawn last)
     this.vignetteGraphics = this.add.graphics();
     this.layers.ui.add(this.vignetteGraphics);
@@ -809,6 +805,8 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     if (CAMERA_EFFECTS_ENABLED) {
       this.updateCameraZoom();
     }
+    // VFX: Update particle system every frame
+    this.particles.update(deltaMs / 1000);
     if (this.debugMode) {
       this.drawDebugOverlay();
     }
@@ -873,7 +871,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.resetKeeperToCanonical();
     this.setKeeperPose("ready");
     this.applyKeeperMoodTint();
-    this.resultText.setAlpha(0);
+    this.resultText.setAlpha(0).setY(LAYOUT.resultText.y);
     // Brighten shot zone during drawing (Phase 2A)
     this.drawStaticField(true);
     this.renderHud();
@@ -956,12 +954,25 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     // Restore normal field guides on shot commit
     this.drawStaticField(false);
 
-    // Audio: kick + whoosh (only after user interaction)
+    // Audio: kick + whoosh + crowd gasp + keeper grunt (only after user interaction)
     if (this._userInteracted) {
       playKickSound();
       const pressure = this.pressureState?.pressure ?? 0;
       this.time.delayedCall(30, () => playWhooshSound(0.5 + pressure * 0.5));
+      this.time.delayedCall(50, () => playCrowdGaspSound());
+      // Keeper grunt when dive starts
+      const reactionMs = this.activePlan?.keeperDecision?.physical?.reactionMs ?? 160;
+      this.time.delayedCall(reactionMs, () => playDiveGruntSound());
     }
+
+    // VFX: Grass particles spray from kick point
+    if (this.activePlan) {
+      const shotDirX = (this.activePlan.intent.targetX - BALL_START.x) / GAME_WIDTH;
+      this.particles.emitGrassKick(BALL_START.x, BALL_START.y + 8, shotDirX);
+    }
+
+    // VFX: Screen shake on kick (subtle 2px for 100ms)
+    this.cameras.main.shake(100, 0.003 + (this.activePlan?.intent.force ?? 0.7) * 0.002);
 
     this.renderHud();
   }
@@ -988,22 +999,28 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     const sample = plan.ballSamples[sampleIndex];
     this.setBallVisual(sample.x, sample.y, sample.scale);
 
-    // Force-proportional rotation
-    const rotationSpeed = 1.5 + plan.intent.force * 2.5;
-    this.ball.setRotation(ballProgress * Math.PI * rotationSpeed);
+    // Curve-direction spin: ball spins matching the curve direction
+    const curveSign = plan.intent.curve >= 0 ? 1 : -1;
+    const spinSpeed = 1.5 + plan.intent.force * 2.5 + Math.abs(plan.intent.curve) * 3;
+    this.ball.setRotation(ballProgress * Math.PI * spinSpeed * curveSign);
 
-    // Ball depth tint
-    const tintProgress = ballProgress * 0.4;
-    const r = 0xff - Math.round(tintProgress * (0xff - 0xcc));
-    const tint = (r << 16) | (r << 8) | r;
+    // Ball depth tint (non-linear — fast initial darkening, then gradual)
+    const tintEased = Math.pow(ballProgress, 0.6) * 0.4;
+    const rc = 0xff - Math.round(tintEased * (0xff - 0xcc));
+    const tint = (rc << 16) | (rc << 8) | rc;
     this.ball.setTint(tint);
 
-    // Ball shadow
-    const shadowScale = 1 - ballProgress * 0.65;
-    const shadowY = BALL_START.y + 12 - ballProgress * 50;
-    this.ballShadow.setPosition(Math.round(sample.x), Math.round(shadowY));
+    // Ball shadow — tracks X position + non-linear depth scaling
+    const shadowProgress = Math.pow(ballProgress, 0.7);
+    const shadowScale = 1 - shadowProgress * 0.65;
+    // Shadow follows ball X (lerp toward ball position as it flies)
+    const shadowX = BALL_START.x + (sample.x - BALL_START.x) * Math.min(1, ballProgress * 1.5);
+    const shadowY = BALL_START.y + 12 - shadowProgress * 50;
+    this.ballShadow.setPosition(Math.round(shadowX), Math.round(shadowY));
     this.ballShadow.setScale(shadowScale, shadowScale * 0.25);
-    this.ballShadow.setAlpha(VISUAL_STYLE.ballShadowAlpha * (1 - ballProgress * 0.6));
+    this.ballShadow.setAlpha(VISUAL_STYLE.ballShadowAlpha * (1 - shadowProgress * 0.6));
+
+
 
     // Ball flight trail
     this.flightTrailBuffer.push({ x: sample.x, y: sample.y });
@@ -1141,13 +1158,30 @@ export class PlayablePenaltyScene extends Phaser.Scene {
 
     // Camera shake disabled (HARD RESET)
 
-    // Play outcome sound
+    // Play outcome sound + enhanced audio
     if (plan.outcome === "goal") {
       playGoalSound();
     } else if (plan.outcome === "save") {
       playSaveSound();
+      this.time.delayedCall(100, () => playCrowdGroanSound());
     } else {
-      playMissSound();
+      // Check if it was a post hit for metallic clang
+      if (plan.collisionReason === "post_hit") {
+        playPostHitSound();
+      } else {
+        playMissSound();
+      }
+      this.time.delayedCall(100, () => playCrowdGroanSound());
+    }
+
+    // ── VFX: Clean outcome effects ──
+
+    // Subtle flash overlay
+    this.playFlashOverlay(plan.outcome);
+
+    // Post hit: screen shake
+    if (plan.collisionReason === "post_hit") {
+      this.cameras.main.shake(150, 0.008);
     }
 
     // Screen vignette flash
@@ -1197,7 +1231,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.clearTrajectoryPreview();
     this.clearOutcomeEffects();
     this.clearFlightTrail();
-    this.resultText.setAlpha(0);
+    this.resultText.setAlpha(0).setY(LAYOUT.resultText.y);
     this.drawStaticField(false);
     this.startBallPulse();
     // Force camera to base state
@@ -1235,33 +1269,120 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     const pressure = this.pressureState?.pressure ?? 0;
     const brightness = 0.6 + pressure * 0.4;
 
-    // Glow pass (wider, lower alpha)
-    this.trailGlow.lineStyle(14, 0xfacc15, 0.1 * brightness);
-    this.trailGlow.beginPath();
-    this.trailGlow.moveTo(this.gesturePoints[0].x, this.gesturePoints[0].y);
-    for (const point of this.gesturePoints.slice(1)) {
-      this.trailGlow.lineTo(point.x, point.y);
-    }
-    this.trailGlow.strokePath();
+    // Estimate power from current gesture length for color feedback
+    const pathLen = this.gesturePoints.slice(1).reduce((sum, p, i) =>
+      sum + Math.hypot(p.x - this.gesturePoints[i].x, p.y - this.gesturePoints[i].y), 0);
+    const powerEstimate = Math.min(1, pathLen / 300);
 
-    // Shadow pass
-    this.trail.lineStyle(7, 0x111827, 0.5);
-    this.trail.beginPath();
-    this.trail.moveTo(this.gesturePoints[0].x, this.gesturePoints[0].y);
-    for (const point of this.gesturePoints.slice(1)) {
-      this.trail.lineTo(point.x, point.y);
-    }
-    this.trail.strokePath();
+    // Path simplification (Ramer-Douglas-Peucker)
+    const simplified = this.simplifyTrailPath(this.gesturePoints, 2.5);
+    if (simplified.length < 2) return;
 
-    // Core pass
-    this.trail.lineStyle(4, 0xfacc15, 0.85 * brightness);
-    this.trail.beginPath();
-    this.trail.moveTo(this.gesturePoints[0].x, this.gesturePoints[0].y);
-    for (const point of this.gesturePoints.slice(1)) {
-      this.trail.lineTo(point.x, point.y);
+    // Power-based color (hue: blue 200 to orange 40)
+    const hue = Math.round(200 - powerEstimate * 160);
+    const coreColor = this.hslToHex(hue, 90, 65);
+    const glowColor = this.hslToHex(hue, 90, 55);
+
+    // Layer 1: Outer glow
+    this.trailGlow.lineStyle(18, glowColor, 0.12 * brightness);
+    this.strokeSmooth(this.trailGlow, simplified);
+
+    // Layer 2: Shadow
+    this.trail.lineStyle(8, 0x111827, 0.45);
+    this.strokeSmooth(this.trail, simplified);
+
+    // Layer 3: Core line
+    this.trail.lineStyle(4.5, coreColor, 0.88 * brightness);
+    this.strokeSmooth(this.trail, simplified);
+
+    // Layer 4: White highlight center
+    this.trail.lineStyle(1.5, 0xffffff, 0.7 * brightness);
+    this.strokeSmooth(this.trail, simplified);
+
+    // Brush tip at the end
+    if (simplified.length >= 2) {
+      const tip = simplified[simplified.length - 1];
+      this.trail.fillStyle(0xffffff, 0.85 * brightness);
+      this.trail.fillCircle(tip.x, tip.y, 3 + powerEstimate * 3);
+      this.trail.fillStyle(coreColor, 0.4 * brightness);
+      this.trail.fillCircle(tip.x, tip.y, 5 + powerEstimate * 4);
     }
-    this.trail.strokePath();
   }
+
+  private simplifyTrailPath(
+    points: readonly { x: number; y: number }[],
+    epsilon: number
+  ): Array<{ x: number; y: number }> {
+    if (points.length <= 2) return points.map(p => ({ x: p.x, y: p.y }));
+    const first = points[0];
+    const last = points[points.length - 1];
+    let maxDist = 0;
+    let maxIdx = 0;
+    for (let i = 1; i < points.length - 1; i++) {
+      const dx = last.x - first.x;
+      const dy = last.y - first.y;
+      const lenSq = dx * dx + dy * dy;
+      let dist: number;
+      if (lenSq === 0) {
+        dist = Math.hypot(points[i].x - first.x, points[i].y - first.y);
+      } else {
+        dist = Math.abs(dy * points[i].x - dx * points[i].y + last.x * first.y - last.y * first.x) / Math.sqrt(lenSq);
+      }
+      if (dist > maxDist) { maxDist = dist; maxIdx = i; }
+    }
+    if (maxDist > epsilon) {
+      const left = this.simplifyTrailPath(points.slice(0, maxIdx + 1), epsilon);
+      const right = this.simplifyTrailPath(points.slice(maxIdx), epsilon);
+      return [...left.slice(0, -1), ...right];
+    }
+    return [{ x: first.x, y: first.y }, { x: last.x, y: last.y }];
+  }
+
+  private strokeSmooth(
+    gfx: Phaser.GameObjects.Graphics,
+    points: Array<{ x: number; y: number }>
+  ): void {
+    if (points.length < 2) return;
+    gfx.beginPath();
+    gfx.moveTo(points[0].x, points[0].y);
+    if (points.length === 2) {
+      gfx.lineTo(points[1].x, points[1].y);
+    } else {
+      const mid0x = (points[0].x + points[1].x) / 2;
+      const mid0y = (points[0].y + points[1].y) / 2;
+      gfx.lineTo(mid0x, mid0y);
+      for (let i = 1; i < points.length - 1; i++) {
+        const curr = points[i];
+        const next = points[i + 1];
+        const midX = (curr.x + next.x) / 2;
+        const midY = (curr.y + next.y) / 2;
+        const prevMidX = (points[i - 1].x + curr.x) / 2;
+        const prevMidY = (points[i - 1].y + curr.y) / 2;
+        for (let t = 0.25; t <= 1; t += 0.25) {
+          const inv = 1 - t;
+          const bx = inv * inv * prevMidX + 2 * inv * t * curr.x + t * t * midX;
+          const by = inv * inv * prevMidY + 2 * inv * t * curr.y + t * t * midY;
+          gfx.lineTo(bx, by);
+        }
+      }
+      const last = points[points.length - 1];
+      gfx.lineTo(last.x, last.y);
+    }
+    gfx.strokePath();
+  }
+
+  private hslToHex(h: number, s: number, l: number): number {
+    const sn = s / 100;
+    const ln = l / 100;
+    const a = sn * Math.min(ln, 1 - ln);
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12;
+      const color = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color);
+    };
+    return (f(0) << 16) | (f(8) << 8) | f(4);
+  }
+
 
   private renderHud(): void {
     const ui = getOutcomeUi({
@@ -1294,7 +1415,6 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       gesturePath: { left: 70, top: GOAL_FRAME.topY, right: GAME_WIDTH - 70, bottom: BALL_START.y }
     });
 
-    const suffix = this.phase === "match_end" ? "  •  Tap to play again" : "";
     this.scoreText.setText(ui.scoreText);
     this.shotText.setText(ui.shotText);
 
@@ -1304,19 +1424,23 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       this.hintText.setAlpha(0.6);
       this.hintText.setText(this.phase === "drawing" ? "Release to shoot" : ui.firstUseHint ?? "Drag again for next shot");
     } else if (this.phase === "match_end") {
-      this.hintText.setAlpha(0.7);
-      this.hintText.setText(suffix);
+      const playerWon = this.matchState.score.player > this.matchState.score.goalkeeper;
+      const matchEndText = playerWon
+        ? "YOU WIN  ·  Tap to play again"
+        : "YOU LOSE  ·  Tap to play again";
+      this.hintText.setAlpha(0.85);
+      this.hintText.setText(matchEndText);
     } else {
       this.hintText.setAlpha(0);
     }
   }
 
   /**
-   * Phased keeper animation:
-   * 1. Anticipation (0 → reactionT): slight lean/shift toward predicted side
-   * 2. Dive travel (reactionT → contactT or 0.85): full dive to target X with arc
-   * 3. Contact (near contactT): save pose, hold position
-   * 4. Recovery (after contactT): settle
+   * Phased keeper animation with 3D-feel enhancements:
+   * 1. Anticipation (0 → reactionT): crouch + weight shift toward dive side
+   * 2. Dive travel (reactionT → contactT or 0.85): leap with perspective scaling + depth tint
+   * 3. Contact (near contactT): landing squash impact
+   * 4. Recovery (after contactT): settle bounce + tint fade
    */
   protected moveKeeperPhased(
     direction: DiveDirection,
@@ -1329,51 +1453,105 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     const anticipationEnd = Math.max(0.08, Math.min(reactionT, 0.2));
     const diveEnd = contactT !== null ? contactT : 0.85;
 
+    // How far from center the keeper goes (0=center, 1=full dive)
+    const diveDistanceRatio = Math.abs(targetX - getGoalCenterX()) / ((GOAL_FRAME.rightX - GOAL_FRAME.leftX) / 2);
+
     if (progress < anticipationEnd) {
-      // ── Phase 1: Anticipation ──
-      // Slight lean toward dive direction, keeper stays in ready pose
+      // ── Phase 1: Anticipation (Crouch + Weight Shift) ──
       this.setKeeperPose("ready");
       const leanProgress = progress / anticipationEnd;
-      const leanX = direction === "left" ? -8 : direction === "right" ? 8 : 0;
-      const leanY = -2 * Math.sin(leanProgress * Math.PI * 0.5); // slight upward shift
+      const eased = smoothStep(leanProgress);
+
+      // Lean toward dive direction
+      const leanX = direction === "left" ? -12 : direction === "right" ? 12 : 0;
+      // Crouch down slightly before leaping (squash effect)
+      const crouchY = 4 * Math.sin(leanProgress * Math.PI * 0.5);
       this.keeper.setPosition(
-        getGoalCenterX() + leanX * smoothStep(leanProgress),
-        VISUAL_KEEPER_Y + leanY
+        getGoalCenterX() + leanX * eased,
+        VISUAL_KEEPER_Y + crouchY
       );
       this.keeper.setRotation(0);
+
+      // Anticipation squash: slight Y compression before the leap
+      const baseHeight = KEEPER_POSE_MANIFEST["ready"].displayHeight;
+      const baseWidth = (this.keeper.frame.width / this.keeper.frame.height) * baseHeight;
+      const squashY = 1 - eased * 0.05; // compress 5% at peak
+      const squashX = 1 + eased * 0.03; // widen slightly
+      this.keeper.setDisplaySize(baseWidth * squashX, baseHeight * squashY);
+
     } else if (progress < diveEnd) {
-      // ── Phase 2: Dive travel ──
+      // ── Phase 2: Dive Travel (Leap + Perspective) ──
       this.setKeeperPose(divePose);
       const diveProgress = (progress - anticipationEnd) / Math.max(0.01, diveEnd - anticipationEnd);
       const easedDive = smoothStep(Math.min(1, diveProgress));
 
-      // Arc motion
-      const diveArc = Math.sin(easedDive * Math.PI) * 8;
+      // Enhanced arc motion — higher peak, more dramatic leap
+      const arcHeight = 16 + diveDistanceRatio * 8; // higher arc for wider dives
+      const diveArc = Math.sin(easedDive * Math.PI) * arcHeight;
+
       this.keeper.setPosition(
         getGoalCenterX() + (targetX - getGoalCenterX()) * easedDive,
         VISUAL_KEEPER_Y + (VISUAL_KEEPER_DIVE_Y - VISUAL_KEEPER_Y) * easedDive - diveArc
       );
 
-      // Rotation during dive
-      const rotationPeak = direction === "left" ? -0.12 : direction === "right" ? 0.12 : 0;
+      // 3D Perspective scaling — keeper shrinks as they dive to edges
+      const perspectiveScale = 1 - diveDistanceRatio * easedDive * 0.1; // up to 10% smaller at edges
+
+      // Enhanced rotation during dive
+      const rotationPeak = direction === "left" ? -0.18 : direction === "right" ? 0.18 : 0;
       const rotationCurve = Math.sin(easedDive * Math.PI);
       this.keeper.setRotation(rotationPeak * rotationCurve);
 
-      // Slight squash/stretch — capped at 1.03
+      // Squash/stretch with perspective: stretch during leap, squash on landing
       const baseHeight = KEEPER_POSE_MANIFEST[divePose].displayHeight;
       const baseWidth = (this.keeper.frame.width / this.keeper.frame.height) * baseHeight;
-      const stretchX = 1 + rotationCurve * Math.min(0.03, KEEPER_CANONICAL.maxStretch - 1);
-      const stretchY = 1 - rotationCurve * 0.015;
-      this.keeper.setDisplaySize(baseWidth * stretchX, baseHeight * stretchY);
+      const stretchPhase = easedDive < 0.5
+        ? Math.sin(easedDive * Math.PI) // stretch during ascent
+        : Math.sin(easedDive * Math.PI) * 0.6; // less stretch during descent
+      const stretchX = 1 + stretchPhase * 0.04;
+      const stretchY = 1 - stretchPhase * 0.02;
+      this.keeper.setDisplaySize(
+        baseWidth * stretchX * perspectiveScale,
+        baseHeight * stretchY * perspectiveScale
+      );
+
+      // 3D Depth tinting — slightly darker when diving to edges
+      const depthDarken = Math.round(diveDistanceRatio * easedDive * 30);
+      const r = 0xff - depthDarken;
+      const depthTint = (r << 16) | (r << 8) | r;
+      this.keeper.setTint(depthTint);
+
     } else {
-      // ── Phase 3/4: Contact + Recovery ──
-      // Keeper stays at dive target position
+      // ── Phase 3/4: Contact + Recovery (Landing Impact) ──
       this.setKeeperPose(divePose);
-      this.keeper.setPosition(targetX, VISUAL_KEEPER_DIVE_Y);
-      // Slight rotation hold then ease back
-      const recoveryProgress = Math.min(1, (progress - diveEnd) / 0.15);
-      const rotationPeak = direction === "left" ? -0.08 : direction === "right" ? 0.08 : 0;
+      const recoveryProgress = Math.min(1, (progress - diveEnd) / 0.18);
+
+      // Landing squash bounce
+      const bouncePhase = Math.sin(recoveryProgress * Math.PI * 2) * Math.exp(-recoveryProgress * 4);
+      const landingSquashX = 1 + bouncePhase * 0.06;
+      const landingSquashY = 1 - bouncePhase * 0.04;
+
+      // Perspective scale at final position
+      const perspectiveScale = 1 - diveDistanceRatio * 0.1;
+
+      const baseHeight = KEEPER_POSE_MANIFEST[divePose].displayHeight;
+      const baseWidth = (this.keeper.frame.width / this.keeper.frame.height) * baseHeight;
+      this.keeper.setDisplaySize(
+        baseWidth * landingSquashX * perspectiveScale,
+        baseHeight * landingSquashY * perspectiveScale
+      );
+
+      // Settle into final position
+      this.keeper.setPosition(targetX, VISUAL_KEEPER_DIVE_Y + bouncePhase * 3);
+
+      // Rotation eases back
+      const rotationPeak = direction === "left" ? -0.1 : direction === "right" ? 0.1 : 0;
       this.keeper.setRotation(rotationPeak * (1 - smoothStep(recoveryProgress)));
+
+      // Depth tint fades back toward normal
+      const depthDarken = Math.round(diveDistanceRatio * (1 - recoveryProgress * 0.5) * 30);
+      const r = 0xff - depthDarken;
+      this.keeper.setTint((r << 16) | (r << 8) | r);
     }
   }
 
@@ -1602,7 +1780,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       });
 
       if (saveFrame.visualSaveTrusted) {
-        this.drawImpactRing(burstX, burstY, 0x4ade80, 50);
+        this.drawImpactRing(burstX, burstY, 0xe00800, 50);
       }
 
     } else if (plan.outcome === "goal") {
@@ -1651,8 +1829,6 @@ export class PlayablePenaltyScene extends Phaser.Scene {
         ease: "Cubic.easeOut"
       });
 
-      // Animated net pulse at ball entry point
-      this.animateNetPulse(finalSample.x, finalSample.y);
 
     } else {
       // ── MISS: ball exits the scene ──
@@ -1701,26 +1877,11 @@ export class PlayablePenaltyScene extends Phaser.Scene {
 
       // Subtle miss wisp at exit point
       if (plan.collisionReason === "post_hit") {
-        this.drawImpactRing(finalSample.x, finalSample.y, 0xf97316, 40);
+        this.drawImpactRing(finalSample.x, finalSample.y, 0x636363, 40);
       }
     }
   }
 
-  private animateNetPulse(x: number, y: number): void {
-    const ripple = { radius: 20, alpha: 0.7 };
-    this.tweens.add({
-      targets: ripple,
-      radius: 100,
-      alpha: 0,
-      duration: 500,
-      ease: "Cubic.easeOut",
-      onUpdate: () => {
-        this.netPulse.clear();
-        this.netPulse.lineStyle(4, 0xfacc15, ripple.alpha * 0.6).strokeEllipse(x, y + 8, ripple.radius * 1.8, ripple.radius * 0.8);
-        this.netPulse.lineStyle(2, 0xf8fafc, ripple.alpha * 0.4).strokeEllipse(x, y + 8, ripple.radius * 1.2, ripple.radius * 0.5);
-      }
-    });
-  }
 
   private drawImpactRing(x: number, y: number, color: number, maxRadius: number): void {
     const ring = { radius: 5, alpha: 0.8 };
@@ -1739,8 +1900,9 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   }
 
   private flashVignette(outcome: PlayableOutcome): void {
-    const color = outcome === "goal" ? 0xfacc15 : outcome === "save" ? 0x4ade80 : 0xf97316;
-    const maxAlpha = outcome === "miss" ? 0.04 : 0.1;
+    // e& brand-aligned vignette: red accent for goal, muted for others
+    const color = outcome === "goal" ? 0xe00800 : outcome === "save" ? 0x636363 : 0x4b0f1e;
+    const maxAlpha = outcome === "goal" ? 0.10 : 0.05;
     const state = { alpha: maxAlpha };
     this.vignetteGraphics.clear();
     this.vignetteGraphics.fillStyle(color, state.alpha);
@@ -1774,29 +1936,47 @@ export class PlayablePenaltyScene extends Phaser.Scene {
 
   private animateResultText(outcome: PlayableOutcome): void {
     const displayMs = this.heroResult !== null && this.heroResult.moments.length > 0 ? 1250 : 900;
-    const resultStr = outcome === "goal" ? "GOAL!" : outcome === "save" ? "SAVED!" : "MISS";
+    const resultStr = outcome === "goal" ? "GOAL" : outcome === "save" ? "SAVED" : "MISS";
     this.resultText.setText(resultStr);
     this.resultText.setColor(getResultColor(outcome));
-    this.resultText.setScale(0.3);
-    this.resultText.setAlpha(1);
+    this.resultText.setScale(0.6);
+    this.resultText.setAlpha(0);
 
+    // Clean, elegant scale-in with subtle fade
     this.tweens.add({
       targets: this.resultText,
       scaleX: 1,
       scaleY: 1,
-      duration: 300,
-      ease: "Back.easeOut",
+      alpha: 1,
+      duration: 280,
+      ease: "Cubic.easeOut",
       onComplete: () => {
         this.time.delayedCall(displayMs, () => {
           this.tweens.add({
             targets: this.resultText,
             alpha: 0,
-            scaleY: 0.8,
-            duration: 250,
+            scaleY: 0.95,
+            duration: 300,
             ease: "Cubic.easeIn"
           });
         });
       }
+    });
+  }
+
+  /** Subtle flash overlay using e& brand tones */
+  private playFlashOverlay(outcome: PlayableOutcome): void {
+    // e& Red for goals, dark for save/miss
+    const color = outcome === "goal" ? 0xe00800 : 0x000000;
+    const alpha = outcome === "goal" ? 0.12 : 0.06;
+    this.flashOverlay.setFillStyle(color, alpha);
+    this.tweens.add({
+      targets: this.flashOverlay,
+      alpha: 0,
+      duration: 350,
+      ease: "Cubic.easeOut",
+      onStart: () => { this.flashOverlay.setAlpha(1); },
+      onComplete: () => { this.flashOverlay.setAlpha(0); }
     });
   }
 
@@ -1824,7 +2004,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       const g = this.shotDots[i];
       g.clear();
       if (i < this.matchState.shotsTaken) {
-        const color = i < this.matchState.score.player ? 0xfacc15 : 0xef4444;
+        const color = i < this.matchState.score.player ? 0xe00800 : 0x636363;
         g.fillStyle(color, 0.85).fillCircle(startX + i * dotSpacing, y, 4);
       } else {
         g.lineStyle(1.5, 0xf8fafc, 0.25).strokeCircle(startX + i * dotSpacing, y, 4);
@@ -1963,6 +2143,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     const bobAmplitude = mood === "nervous" ? 4 : mood === "desperate" ? 3 : 2;
     const bobDuration = mood === "nervous" ? 800 : mood === "aggressive" ? 900 : 1200;
 
+    // Vertical bob (weight shift up/down)
     this.tweens.add({
       targets: this.keeper,
       y: VISUAL_KEEPER_Y - bobAmplitude,
@@ -1970,6 +2151,29 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut"
+    });
+
+    // Horizontal weight shift (subtle side-to-side sway)
+    const swayAmount = mood === "nervous" ? 4 : 2;
+    this.tweens.add({
+      targets: this.keeper,
+      x: getGoalCenterX() + swayAmount,
+      duration: bobDuration * 1.6,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      delay: bobDuration * 0.3
+    });
+
+    // Subtle rotation (shoulder tilt)
+    this.tweens.add({
+      targets: this.keeper,
+      rotation: 0.015,
+      duration: bobDuration * 2,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      delay: bobDuration * 0.5
     });
   }
 
@@ -2238,7 +2442,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
 
       // Draw keeper reach circle at contact point
       if (p.contactPoint && p.contactT !== null) {
-        g.lineStyle(2, 0x4ade80, 0.5);
+        g.lineStyle(2, 0xe00800, 0.5);
         g.strokeCircle(p.contactPoint.x, p.contactPoint.y, p.keeperReachAtContact);
         mkLabel(p.contactPoint.x + p.keeperReachAtContact + 4, p.contactPoint.y - 6, `reach: ${p.keeperReachAtContact.toFixed(0)}px`, "#4ade80");
       }
@@ -2258,7 +2462,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     mkLabel(BALL_START.x + 55, BALL_START.y - 8, "BALL START", "#22c55e");
 
     // Goal frame (yellow)
-    g.lineStyle(2, 0xfacc15, 0.6);
+    g.lineStyle(2, 0xe00800, 0.6);
     g.strokeRect(
       GOAL_FRAME.leftX, GOAL_FRAME.topY,
       GOAL_FRAME.rightX - GOAL_FRAME.leftX,
@@ -2424,8 +2628,9 @@ function resultTextStyle(fontSize: number): Phaser.Types.GameObjects.Text.TextSt
 }
 
 function getResultColor(outcome: PlayableOutcome | "none"): string {
-  if (outcome === "goal") return "#facc15";
-  if (outcome === "save") return "#4ade80";
-  if (outcome === "miss") return "#f97316";
+  // e& brand palette: Red for goals, Grey for saves, Maroon for misses
+  if (outcome === "goal") return "#E00800";
+  if (outcome === "save") return "#9ca3af";
+  if (outcome === "miss") return "#636363";
   return "#f8fafc";
 }

@@ -48,6 +48,11 @@ export const DEFAULT_COLLISION_TUNING: CollisionTuning = {
 // Number of samples to check along the trajectory for keeper contact
 const COLLISION_SAMPLE_COUNT = 48;
 
+// Forgiveness margin: balls landing within this many pixels outside the goal
+// still count as goals. Compensates for the 2D perspective making the ball
+// look "inside" when it's technically just outside the frame.
+const GOAL_FORGIVENESS_PX = 8;
+
 export function resolveBallCollision(
   trajectory: BallTrajectory,
   goal: GoalFrame,
@@ -89,7 +94,7 @@ export function resolveBallCollision(
     };
   }
 
-  if (isInsideGoal(final, goal)) {
+  if (isInsideGoal(final, goal) || isNearlyInsideGoal(final, goal, GOAL_FORGIVENESS_PX)) {
     return {
       ...noContactBase,
       outcome: "goal",
@@ -144,7 +149,22 @@ function inferDiveDirection(keeperCenterX: number, goal: GoalFrame): "left" | "c
 }
 
 function isInsideGoal(point: Point2D, goal: GoalFrame): boolean {
-  return point.x > goal.leftX && point.x < goal.rightX && point.y > goal.topY && point.y < goal.bottomY;
+  // Use inclusive boundaries — landing exactly on the post/crossbar line counts as inside
+  return point.x >= goal.leftX && point.x <= goal.rightX && point.y >= goal.topY && point.y <= goal.bottomY;
+}
+
+/**
+ * Forgiveness zone: if the ball is within `marginPx` pixels of the goal frame
+ * on the SIDES and BOTTOM, it still counts as a goal. This compensates for the
+ * 2D perspective illusion where the ball visually looks "in" but is technically
+ * a few pixels outside.
+ *
+ * IMPORTANT: No forgiveness on the TOP (crossbar). In real football, a ball
+ * over the bar is always a miss — never a goal.
+ */
+function isNearlyInsideGoal(point: Point2D, goal: GoalFrame, marginPx: number): boolean {
+  return point.x >= goal.leftX - marginPx && point.x <= goal.rightX + marginPx &&
+         point.y >= goal.topY && point.y <= goal.bottomY + marginPx;
 }
 
 function hitsGoalFrame(point: Point2D, goal: GoalFrame): boolean {

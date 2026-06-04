@@ -34,7 +34,7 @@ export interface OutcomeUi {
 export function getOutcomeUi(context: UiContext): OutcomeUi {
   const panels = getPanels(context.viewportWidth, context.viewportHeight);
   return {
-    scoreText: `Player ${context.playerScore} - Keeper ${context.goalkeeperScore}`,
+    scoreText: `Player ${context.playerScore} – Keeper ${context.goalkeeperScore}`,
     shotText: `Shot ${context.shotNumber}/${context.maxShots}`,
     resultText: getResultText(context),
     restartAction: "restart",

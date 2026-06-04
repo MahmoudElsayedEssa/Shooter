@@ -140,3 +140,101 @@ export function playWhooshSound(intensity: number): void {
   noise.start(ctx.currentTime);
   noise.onended = () => { noise.disconnect(); gain.disconnect(); filter.disconnect(); };
 }
+
+/** Metallic clang for post/crossbar hits */
+export function playPostHitSound(): void {
+  const ctx = getAudioCtx();
+  if (ctx === null) return;
+  // High metallic ring
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1800, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.35, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.4);
+  osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+  // Secondary harmonic for metallic quality
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = "sine";
+  osc2.frequency.setValueAtTime(3600, ctx.currentTime);
+  osc2.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.2);
+  gain2.gain.setValueAtTime(0.15, ctx.currentTime);
+  gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+  osc2.connect(gain2).connect(ctx.destination);
+  osc2.start(ctx.currentTime);
+  osc2.stop(ctx.currentTime + 0.25);
+  osc2.onended = () => { osc2.disconnect(); gain2.disconnect(); };
+}
+
+/** Crowd gasp when ball is kicked */
+export function playCrowdGaspSound(): void {
+  const ctx = getAudioCtx();
+  if (ctx === null) return;
+  const bufferSize = Math.floor(ctx.sampleRate * 0.35);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+  const noise = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 800;
+  filter.Q.value = 1.2;
+  noise.buffer = buffer;
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.06);
+  gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.15);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.35);
+  noise.connect(filter).connect(gain).connect(ctx.destination);
+  noise.start(ctx.currentTime);
+  noise.onended = () => { noise.disconnect(); gain.disconnect(); filter.disconnect(); };
+}
+
+/** Keeper dive effort grunt */
+export function playDiveGruntSound(): void {
+  const ctx = getAudioCtx();
+  if (ctx === null) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(120, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 400;
+  osc.connect(filter).connect(gain).connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.1);
+  osc.onended = () => { osc.disconnect(); gain.disconnect(); filter.disconnect(); };
+}
+
+/** Crowd groan on miss/save (disappointment) */
+export function playCrowdGroanSound(): void {
+  const ctx = getAudioCtx();
+  if (ctx === null) return;
+  const bufferSize = Math.floor(ctx.sampleRate * 0.6);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+  const noise = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 500;
+  filter.Q.value = 0.6;
+  noise.buffer = buffer;
+  gain.gain.setValueAtTime(0, ctx.currentTime + 0.1);
+  gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.25);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.7);
+  noise.connect(filter).connect(gain).connect(ctx.destination);
+  noise.start(ctx.currentTime + 0.1);
+  noise.onended = () => { noise.disconnect(); gain.disconnect(); filter.disconnect(); };
+}
+

@@ -248,24 +248,24 @@ export function createKeeperPoseManifest(textureKeys: KeeperTextureKeys): Keeper
   } as const;
 
   return {
-    idle: pose("idle", idle, idle, "idle", 126, null, {}, {}, false, 0, ["center"], "center", true),
-    ready: pose("ready", ready, idle, "idle", 126, null, {}, {}, false, 0, ["left", "center", "right"], "any", true),
-    focused_idle: pose("focused_idle", readyWide, idle, "ready", 122, null, {}, {}, false, 0, ["center"], "center", true),
-    nervous_idle: pose("nervous_idle", ready, idle, "ready", 126, null, {}, {}, false, 0, ["center"], "center", true),
-    aggressive_idle: pose("aggressive_idle", readyWide, idle, "ready", 122, null, {}, {}, false, 0.02, ["center"], "center", true),
-    desperate_idle: pose("desperate_idle", readyWide, idle, "ready", 124, null, {}, {}, false, 0, ["center"], "center", true),
-    anticipate_left: pose("anticipate_left", anticipateLeft, ready, "ready", 122, null, {}, {}, false, -0.03, ["left"], "left", true),
-    anticipate_right: pose("anticipate_right", anticipateRight, ready, "ready", 122, null, {}, {}, false, 0.03, ["right"], "right", true),
-    anticipate_center: pose("anticipate_center", readyWide, ready, "ready", 122, null, {}, {}, false, 0, ["center"], "center", true),
-    dive_left: pose("dive_left", textureKeys.diveLeftMid, ready, "ready", 96, leftDiveAnchors.mid, leftDiveTextures, leftDiveAnchors, false, 0.02, ["left"], "left", true),
-    dive_right: pose("dive_right", textureKeys.diveRightMid, ready, "ready", 96, rightDiveAnchors.mid, rightDiveTextures, rightDiveAnchors, false, -0.02, ["right"], "right", true),
-    dive_center: pose("dive_center", centerBlock, ready, "ready", 112, { x: 0, y: -34 }, {}, {}, false, 0, ["center"], "center", true),
-    save_left_contact: pose("save_left_contact", textureKeys.diveLeftMid, textureKeys.diveLeftMid, "dive_left", 96, leftDiveAnchors.mid, leftDiveTextures, leftDiveAnchors, false, 0.02, ["left"], "left", true),
-    save_right_contact: pose("save_right_contact", textureKeys.diveRightMid, textureKeys.diveRightMid, "dive_right", 96, rightDiveAnchors.mid, rightDiveTextures, rightDiveAnchors, false, -0.02, ["right"], "right", true),
-    save_center_contact: pose("save_center_contact", centerBlock, ready, "dive_center", 112, { x: 0, y: -34 }, {}, {}, false, 0, ["center"], "center", true),
-    goal_conceded: pose("goal_conceded", miss, ready, "ready", 124, null, {}, {}, false, 0.12, ["left", "center", "right"], "any", true),
-    miss_reaction: pose("miss_reaction", miss, ready, "ready", 124, null, {}, {}, false, 0, ["left", "center", "right"], "any", true),
-    recover: pose("recover", recover, idle, "ready", 122, null, {}, {}, false, 0, ["left", "center", "right"], "any", true)
+    idle: pose("idle", idle, idle, "idle", 176, null, {}, {}, false, 0, ["center"], "center", true),
+    ready: pose("ready", ready, idle, "idle", 176, null, {}, {}, false, 0, ["left", "center", "right"], "any", true),
+    focused_idle: pose("focused_idle", readyWide, idle, "ready", 170, null, {}, {}, false, 0, ["center"], "center", true),
+    nervous_idle: pose("nervous_idle", ready, idle, "ready", 176, null, {}, {}, false, 0, ["center"], "center", true),
+    aggressive_idle: pose("aggressive_idle", readyWide, idle, "ready", 170, null, {}, {}, false, 0.02, ["center"], "center", true),
+    desperate_idle: pose("desperate_idle", readyWide, idle, "ready", 174, null, {}, {}, false, 0, ["center"], "center", true),
+    anticipate_left: pose("anticipate_left", anticipateLeft, ready, "ready", 170, null, {}, {}, false, -0.03, ["left"], "left", true),
+    anticipate_right: pose("anticipate_right", anticipateRight, ready, "ready", 170, null, {}, {}, false, 0.03, ["right"], "right", true),
+    anticipate_center: pose("anticipate_center", readyWide, ready, "ready", 170, null, {}, {}, false, 0, ["center"], "center", true),
+    dive_left: pose("dive_left", textureKeys.diveLeftMid, ready, "ready", 134, leftDiveAnchors.mid, leftDiveTextures, leftDiveAnchors, false, 0.02, ["left"], "left", true),
+    dive_right: pose("dive_right", textureKeys.diveRightMid, ready, "ready", 134, rightDiveAnchors.mid, rightDiveTextures, rightDiveAnchors, false, -0.02, ["right"], "right", true),
+    dive_center: pose("dive_center", centerBlock, ready, "ready", 156, { x: 0, y: -34 }, {}, {}, false, 0, ["center"], "center", true),
+    save_left_contact: pose("save_left_contact", textureKeys.diveLeftMid, textureKeys.diveLeftMid, "dive_left", 134, leftDiveAnchors.mid, leftDiveTextures, leftDiveAnchors, false, 0.02, ["left"], "left", true),
+    save_right_contact: pose("save_right_contact", textureKeys.diveRightMid, textureKeys.diveRightMid, "dive_right", 134, rightDiveAnchors.mid, rightDiveTextures, rightDiveAnchors, false, -0.02, ["right"], "right", true),
+    save_center_contact: pose("save_center_contact", centerBlock, ready, "dive_center", 156, { x: 0, y: -34 }, {}, {}, false, 0, ["center"], "center", true),
+    goal_conceded: pose("goal_conceded", miss, ready, "ready", 174, null, {}, {}, false, 0.12, ["left", "center", "right"], "any", true),
+    miss_reaction: pose("miss_reaction", miss, ready, "ready", 174, null, {}, {}, false, 0, ["left", "center", "right"], "any", true),
+    recover: pose("recover", recover, idle, "ready", 170, null, {}, {}, false, 0, ["left", "center", "right"], "any", true)
   } as const;
 }
 

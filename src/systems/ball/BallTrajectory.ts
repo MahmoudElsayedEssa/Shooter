@@ -35,16 +35,40 @@ export function createBallTrajectory(
   intent: ShotIntent,
   viewportWidth: number
 ): BallTrajectory {
-  const curveOffsetPx = intent.curve * getMaxCurveOffset(viewportWidth);
+  const maxOffset = getMaxCurveOffset(viewportWidth);
+  const curveOffsetPx = intent.curve * maxOffset;
   const target = { x: intent.targetX, y: intent.targetY };
-  const oneThird = interpolate(start, target, 1 / 3);
-  const twoThirds = interpolate(start, target, 2 / 3);
+
+  // ── Sinusoidal curve (banana kick effect) ──
+  // Instead of flat offset, curve follows sin(πt) envelope:
+  // peaks in the middle (t=0.5), arrives cleanly at start and end.
+  // Stronger shots = tighter curves (less max offset needed)
+  const curveAmplitude = curveOffsetPx * (0.85 + intent.force * 0.15);
+  // Vertical lift for curved shots: the more curve, the higher the ball arcs
+  const curveLiftPx = Math.abs(intent.curve) * (18 + intent.force * 12);
+
+  // Control points at 1/3 and 2/3 with sin(πt)-weighted offsets
+  const t1 = 1 / 3;
+  const t2 = 2 / 3;
+  const curveFactor1 = Math.sin(Math.PI * t1); // ≈ 0.866
+  const curveFactor2 = Math.sin(Math.PI * t2); // ≈ 0.866
+  const liftFactor1 = Math.sin(Math.PI * t1);  // peak lift at middle
+  const liftFactor2 = Math.sin(Math.PI * t2);
+
+  const oneThird = interpolate(start, target, t1);
+  const twoThirds = interpolate(start, target, t2);
 
   return {
     start,
     target,
-    control1: { x: oneThird.x + curveOffsetPx, y: oneThird.y },
-    control2: { x: twoThirds.x + curveOffsetPx, y: twoThirds.y },
+    control1: {
+      x: oneThird.x + curveAmplitude * curveFactor1,
+      y: oneThird.y - curveLiftPx * liftFactor1  // lift upward (negative Y = up)
+    },
+    control2: {
+      x: twoThirds.x + curveAmplitude * curveFactor2,
+      y: twoThirds.y - curveLiftPx * liftFactor2
+    },
     curveOffsetPx,
     durationMs: getFlightDuration(intent.force)
   };
