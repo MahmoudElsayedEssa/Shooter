@@ -4,7 +4,7 @@ import { PlayablePenaltyScene } from "./game/PlayablePenaltyScene";
 import { getLayerDepth } from "./render";
 
 export function createGameConfig(parent: string | HTMLElement): Phaser.Types.Core.GameConfig {
-  const cappedResolution = typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  const cappedResolution = typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio || 1, 3);
 
   return {
     type: Phaser.WEBGL,

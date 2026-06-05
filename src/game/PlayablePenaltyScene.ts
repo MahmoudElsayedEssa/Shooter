@@ -111,7 +111,7 @@ const FONT_FAMILY = "'Inter', 'Segoe UI', Arial, sans-serif";
 const CAMERA_EFFECTS_ENABLED = false;
 
 // ─── Keeper Puppet feature flag ───
-const KEEPER_PUPPET_ENABLED = true;
+const KEEPER_PUPPET_ENABLED = false;
 
 // ─── Keeper Canonical Sizes (max allowed display height per pose) ───
 const KEEPER_CANONICAL = {
@@ -1152,22 +1152,36 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.gesturePoints = [];
 
     // Keeper match-win celebration: after last shot, if keeper wins, celebrate!
-    if (isDecided && KEEPER_PUPPET_ENABLED && this.puppet) {
+    if (isDecided) {
       const keeperWon = this.matchState.score.goalkeeper > this.matchState.score.player;
       if (keeperWon) {
-        const puppet = this.puppet;
-        this.time.delayedCall(1000, () => {
-          puppet.setPose("celebrate");
-          const bodySprite = puppet.getBodySprite();
-          this.tweens.add({
-            targets: bodySprite,
-            x: getGoalCenterX(),
-            y: VISUAL_KEEPER_Y,
-            rotation: 0,
-            duration: 500,
-            ease: "Back.easeOut"
+        if (KEEPER_PUPPET_ENABLED && this.puppet) {
+          const puppet = this.puppet;
+          this.time.delayedCall(1000, () => {
+            puppet.setPose("celebrate");
+            const bodySprite = puppet.getBodySprite();
+            this.tweens.add({
+              targets: bodySprite,
+              x: getGoalCenterX(),
+              y: VISUAL_KEEPER_Y,
+              rotation: 0,
+              duration: 500,
+              ease: "Back.easeOut"
+            });
           });
-        });
+        } else {
+          this.time.delayedCall(1000, () => {
+            this.setKeeperPose("celebrate");
+            this.tweens.add({
+              targets: this.keeper,
+              x: getGoalCenterX(),
+              y: VISUAL_KEEPER_Y,
+              rotation: 0,
+              duration: 500,
+              ease: "Back.easeOut"
+            });
+          });
+        }
       }
     }
 
@@ -1808,6 +1822,18 @@ export class PlayablePenaltyScene extends Phaser.Scene {
         this.applyKeeperPresentation(saveFrame);
         this.keeper.setTint(0xeeffee);
         this.time.delayedCall(100, () => this.keeper.clearTint());
+        // After save, celebrate with save_celebrate pose
+        this.time.delayedCall(600, () => {
+          this.setKeeperPose("save_celebrate");
+          this.tweens.add({
+            targets: this.keeper,
+            x: getGoalCenterX(),
+            y: VISUAL_KEEPER_Y,
+            rotation: 0,
+            duration: 400,
+            ease: "Back.easeOut"
+          });
+        });
       }
 
       // Save burst at contact point
@@ -1911,18 +1937,33 @@ export class PlayablePenaltyScene extends Phaser.Scene {
 
 
     } else {
-      // ── MISS: ball exits the scene ──
+      // ── MISS: ball exits the scene — keeper celebrates (ball went wide!) ──
       if (KEEPER_PUPPET_ENABLED && this.puppet) {
-        this.puppet.setPose("miss");
+        this.puppet.setPose("saveCelebrate");
         const bodySprite = this.puppet.getBodySprite();
         this.tweens.killTweensOf(bodySprite);
-        bodySprite.setPosition(
-          getKeeperX(plan.keeperDecision.tactical.diveDirection),
-          VISUAL_KEEPER_DIVE_Y
-        ).setRotation(0);
+        this.tweens.add({
+          targets: bodySprite,
+          x: getGoalCenterX(),
+          y: VISUAL_KEEPER_Y,
+          rotation: 0,
+          duration: 400,
+          ease: "Back.easeOut"
+        });
       } else {
         this.tweens.killTweensOf(this.keeper);
-        this.applyKeeperPresentation(this.planKeeperFrame(plan, 1));
+        // After a brief dive moment, celebrate!
+        this.time.delayedCall(300, () => {
+          this.setKeeperPose("save_celebrate");
+          this.tweens.add({
+            targets: this.keeper,
+            x: getGoalCenterX(),
+            y: VISUAL_KEEPER_Y,
+            rotation: 0,
+            duration: 400,
+            ease: "Back.easeOut"
+          });
+        });
       }
 
       // Determine exit direction based on where ball ended up
