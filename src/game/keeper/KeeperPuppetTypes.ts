@@ -45,6 +45,8 @@ export interface PuppetPlan {
   readonly diveDirection: "left" | "center" | "right";
   /** Phase timing config based on mood */
   readonly timing: PuppetPhaseTiming;
+  /** Shot outcome */
+  readonly outcome: "goal" | "save" | "miss";
 }
 
 export interface PuppetDebugState {
@@ -148,6 +150,7 @@ export function planPuppetSave(
       visualArmDistance: 0,
       diveDirection,
       timing,
+      outcome,
     };
   }
 
@@ -166,6 +169,7 @@ export function planPuppetSave(
       visualArmDistance: 0,
       diveDirection,
       timing,
+      outcome,
     };
   }
 
@@ -221,6 +225,7 @@ export function planPuppetSave(
     visualArmDistance: clampedDist,
     diveDirection,
     timing,
+    outcome,
   };
 }
 

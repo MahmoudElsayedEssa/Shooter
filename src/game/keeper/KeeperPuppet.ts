@@ -31,7 +31,7 @@ export { planPuppetSave, getPhaseTiming, computePuppetPhase } from "./KeeperPupp
 
 // ─── Types used from scene constants (passed in via config) ───
 
-export type KeeperPose = "idle" | "ready" | "diveLeft" | "diveRight" | "save" | "miss";
+export type KeeperPose = "idle" | "ready" | "diveLeft" | "diveRight" | "save" | "miss" | "celebrate" | "saveCelebrate";
 
 export interface KeeperPuppetConfig {
   readonly textureByPose: Readonly<Record<KeeperPose, string>>;
@@ -248,6 +248,10 @@ export class KeeperPuppet {
           ? Math.min(1, (progress - (this.contactT + 0.15)) / 0.2)
           : Math.min(1, (progress - 0.85) / 0.15);
         const eased = smoothStep(Math.max(0, recoveryProgress));
+
+        if (eased >= 0.8) {
+           this.setPose(plan.outcome === "save" ? "saveCelebrate" : (plan.outcome === "goal" ? "miss" : "idle"));
+        }
 
         // Body eases back
         const currentX = plan.bodyTargetX + (cx - plan.bodyTargetX) * eased;

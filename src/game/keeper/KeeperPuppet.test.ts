@@ -215,6 +215,7 @@ describe("KeeperPuppetTypes — Body-Driven", () => {
       visualArmDistance: 25,
       diveDirection: "left",
       timing: PUPPET_MOOD_TIMING.calm,
+      outcome: "save"
     };
 
     it("returns idle at progress 0", () => {

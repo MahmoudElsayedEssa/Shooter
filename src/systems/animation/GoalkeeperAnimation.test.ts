@@ -23,7 +23,9 @@ const TEXTURES: KeeperTextureKeys = {
   diveRightHigh: "keeper-dive-right-high",
   centerBlock: "keeper-center-block",
   miss: "keeper-miss",
-  recover: "keeper-recover"
+  recover: "keeper-recover",
+  celebrate: "keeper-celebrate",
+  saveCelebrate: "keeper-save-celebrate"
 };
 
 const LAYOUT: KeeperAnimationLayout = {

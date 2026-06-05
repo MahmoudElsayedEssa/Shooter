@@ -45,6 +45,7 @@ import {
 
 import { playKickSound, playGoalSound, playSaveSound, playMissSound, playWhooshSound, playPostHitSound, playCrowdGaspSound, playDiveGruntSound, playCrowdGroanSound, closeAudioContext } from "../systems/audio/ProceduralAudio";
 import { ParticleEmitter } from "../systems/vfx/GameParticles";
+import { NetRippleEffect } from "../systems/vfx/NetRipple";
 
 // Note: planVisualEffects, planAdaptiveAudio, and getGoalkeeperAnimation
 // are integrated through the scene's presentation methods rather than called
@@ -110,7 +111,7 @@ const FONT_FAMILY = "'Inter', 'Segoe UI', Arial, sans-serif";
 const CAMERA_EFFECTS_ENABLED = false;
 
 // ─── Keeper Puppet feature flag ───
-const KEEPER_PUPPET_ENABLED = false;
+const KEEPER_PUPPET_ENABLED = true;
 
 // ─── Keeper Canonical Sizes (max allowed display height per pose) ───
 const KEEPER_CANONICAL = {
@@ -244,6 +245,8 @@ type PlayableAssetKey =
   | "keeperToyCenterBlock"
   | "keeperToyMiss"
   | "keeperToyRecover"
+  | "keeperToyCelebrate"
+  | "keeperToySaveCelebrate"
   | "saveBurst";
 type KeeperPose = KeeperPoseId;
 
@@ -278,6 +281,8 @@ export const PLAYABLE_GAMEPLAY_ASSETS: readonly PlayableGameplayAsset[] = [
   { id: "keeperToyCenterBlock", key: "playable-keeper-toy-center-block", path: "assets/gameplay/keeper-toy-center-block.png" },
   { id: "keeperToyMiss", key: "playable-keeper-toy-miss", path: "assets/gameplay/keeper-toy-miss.png" },
   { id: "keeperToyRecover", key: "playable-keeper-toy-recover", path: "assets/gameplay/keeper-toy-recover.png" },
+  { id: "keeperToyCelebrate", key: "playable-keeper-toy-celebrate", path: "assets/gameplay/keeper-toy-celebrate.png" },
+  { id: "keeperToySaveCelebrate", key: "playable-keeper-toy-save-celebrate", path: "assets/gameplay/keeper-toy-save-celebrate.png" },
   { id: "saveBurst", key: "playable-fx-save-burst", path: "assets/gameplay/fx-save-burst.png" }
 ] as const;
 
@@ -291,22 +296,26 @@ const PLAYABLE_ASSET_BY_ID: Readonly<Record<PlayableAssetKey, PlayableGameplayAs
   );
 
 const KEEPER_TEXTURE_BY_POSE: Readonly<Record<PuppetKeeperPose, string>> = {
-  idle: PLAYABLE_ASSET_BY_ID.keeperIdle.key,
-  ready: PLAYABLE_ASSET_BY_ID.keeperReady.key,
-  diveLeft: PLAYABLE_ASSET_BY_ID.keeperDiveLeft.key,
-  diveRight: PLAYABLE_ASSET_BY_ID.keeperDiveRight.key,
-  save: PLAYABLE_ASSET_BY_ID.keeperSave.key,
-  miss: PLAYABLE_ASSET_BY_ID.keeperMiss.key
+  idle: PLAYABLE_ASSET_BY_ID.keeperToyIdle.key,
+  ready: PLAYABLE_ASSET_BY_ID.keeperToyReady.key,
+  diveLeft: PLAYABLE_ASSET_BY_ID.keeperToyDiveLeftMid.key,
+  diveRight: PLAYABLE_ASSET_BY_ID.keeperToyDiveRightMid.key,
+  save: PLAYABLE_ASSET_BY_ID.keeperToyCenterBlock.key,
+  miss: PLAYABLE_ASSET_BY_ID.keeperToyMiss.key,
+  celebrate: PLAYABLE_ASSET_BY_ID.keeperToyCelebrate.key,
+  saveCelebrate: PLAYABLE_ASSET_BY_ID.keeperToySaveCelebrate.key,
 };
 
 // Keeper heights — sized to fit believably inside realistic background goal
 const KEEPER_HEIGHT_BY_PUPPET_POSE: Readonly<Record<PuppetKeeperPose, number>> = {
-  idle: 120,
-  ready: 120,
-  diveLeft: 95,
-  diveRight: 95,
-  save: 95,
-  miss: 120
+  idle: 210,
+  ready: 210,
+  diveLeft: 160,
+  diveRight: 160,
+  save: 180,
+  miss: 205,
+  celebrate: 215,
+  saveCelebrate: 215,
 };
 
 const KEEPER_POSE_MANIFEST: KeeperPoseManifest = createKeeperPoseManifest({
@@ -323,7 +332,9 @@ const KEEPER_POSE_MANIFEST: KeeperPoseManifest = createKeeperPoseManifest({
   diveRightHigh: PLAYABLE_ASSET_BY_ID.keeperToyDiveRightHigh.key,
   centerBlock: PLAYABLE_ASSET_BY_ID.keeperToyCenterBlock.key,
   miss: PLAYABLE_ASSET_BY_ID.keeperToyMiss.key,
-  recover: PLAYABLE_ASSET_BY_ID.keeperToyRecover.key
+  recover: PLAYABLE_ASSET_BY_ID.keeperToyRecover.key,
+  celebrate: PLAYABLE_ASSET_BY_ID.keeperToyCelebrate.key,
+  saveCelebrate: PLAYABLE_ASSET_BY_ID.keeperToySaveCelebrate.key,
 });
 
 const KEEPER_ANIMATION_LAYOUT: KeeperAnimationLayout = {
@@ -464,8 +475,9 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   private sideVignette!: Phaser.GameObjects.Graphics;
   private goalInterior!: Phaser.GameObjects.Graphics;
 
-  // VFX: Particles + Flash overlay
+  // VFX: Particles + Flash overlay + Net ripple
   private particles!: ParticleEmitter;
+  private netRipple!: NetRippleEffect;
   private flashOverlay!: Phaser.GameObjects.Rectangle;
 
   // Emergency Recovery: debug info for last shot
@@ -701,6 +713,21 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.particles = new ParticleEmitter(this, 150);
     this.particles.addToContainer(this.layers.effects);
 
+    // VFX: Net ripple effect (bold mesh deformation on goal)
+    this.netRipple = new NetRippleEffect(this, {
+      goalLeftX: GOAL_FRAME.leftX,
+      goalRightX: GOAL_FRAME.rightX,
+      goalTopY: GOAL_FRAME.topY,
+      goalBottomY: GOAL_FRAME.bottomY,
+      gridCols: 12,
+      gridRows: 7,
+      maxBulgePx: 45,
+      durationMs: 1400,
+    });
+    // Place on backGoal layer so net threads appear behind the goal front frame
+    this.netRipple.addToContainer(this.layers.backGoal);
+
+
     // Flash overlay (for goal/miss screen flash)
     this.flashOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xffffff, 0)
       .setDepth(200);
@@ -792,6 +819,8 @@ export class PlayablePenaltyScene extends Phaser.Scene {
 
     this.stopBallPulse();
 
+    this.netRipple.destroy();
+
     closeAudioContext();
   }
 
@@ -807,6 +836,8 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     }
     // VFX: Update particle system every frame
     this.particles.update(deltaMs / 1000);
+    // VFX: Update net ripple animation
+    this.netRipple.update(deltaMs);
     if (this.debugMode) {
       this.drawDebugOverlay();
     }
@@ -1120,6 +1151,26 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.phase = isDecided ? "match_end" : "result";
     this.gesturePoints = [];
 
+    // Keeper match-win celebration: after last shot, if keeper wins, celebrate!
+    if (isDecided && KEEPER_PUPPET_ENABLED && this.puppet) {
+      const keeperWon = this.matchState.score.goalkeeper > this.matchState.score.player;
+      if (keeperWon) {
+        const puppet = this.puppet;
+        this.time.delayedCall(1000, () => {
+          puppet.setPose("celebrate");
+          const bodySprite = puppet.getBodySprite();
+          this.tweens.add({
+            targets: bodySprite,
+            x: getGoalCenterX(),
+            y: VISUAL_KEEPER_Y,
+            rotation: 0,
+            duration: 500,
+            ease: "Back.easeOut"
+          });
+        });
+      }
+    }
+
     // HARD RESET: Runtime invariant — score MUST agree with outcome
     if (IS_DEV) {
       const scoreBefore = plan.score; // score before this shot (stored in plan)
@@ -1430,6 +1481,11 @@ export class PlayablePenaltyScene extends Phaser.Scene {
         : "YOU LOSE  ·  Tap to play again";
       this.hintText.setAlpha(0.85);
       this.hintText.setText(matchEndText);
+      
+      if (!playerWon && KEEPER_PUPPET_ENABLED && this.puppet && this.puppet.getPose() !== "celebrate") {
+        this.puppet.setPose("celebrate");
+        this.puppet.getBodySprite().setPosition(getGoalCenterX(), VISUAL_KEEPER_Y);
+      }
     } else {
       this.hintText.setAlpha(0);
     }
@@ -1733,6 +1789,20 @@ export class PlayablePenaltyScene extends Phaser.Scene {
         if (plan.contactPoint) {
           this.puppet.executeSaveContact(plan.contactPoint, diveDir);
         }
+        // After the save contact, celebrate!
+        const puppet = this.puppet;
+        this.time.delayedCall(600, () => {
+          puppet.setPose("saveCelebrate");
+          const bodySprite = puppet.getBodySprite();
+          this.tweens.add({
+            targets: bodySprite,
+            x: getGoalCenterX(),
+            y: VISUAL_KEEPER_Y,
+            rotation: 0,
+            duration: 400,
+            ease: "Back.easeOut"
+          });
+        });
       } else {
         this.tweens.killTweensOf(this.keeper);
         this.applyKeeperPresentation(saveFrame);
@@ -1828,6 +1898,16 @@ export class PlayablePenaltyScene extends Phaser.Scene {
         duration: 200,
         ease: "Cubic.easeOut"
       });
+
+      // ── Net ripple: elegant cloth mesh deformation from impact point ──
+      this.netRipple.trigger(
+        finalSample.x,
+        finalSample.y,
+        plan.intent.force
+      );
+
+      // Confetti burst for celebration
+      this.particles.emitConfetti(finalSample.x, finalSample.y, 35);
 
 
     } else {
@@ -2309,6 +2389,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   private clearOutcomeEffects(): void {
     this.saveBurst.setVisible(false);
     this.netPulse.clear();
+    this.netRipple.clear();
     this.fxGraphics.clear();
     this.vignetteGraphics.clear();
   }
