@@ -131,10 +131,10 @@ describe("MatchFlow", () => {
       expect(s.phase).toBe("reset");
     });
 
-    it("transitions to match_end when match decided", () => {
+    it("transitions to match_end after all 5 shots", () => {
       let s = bootedState();
-      // Score 3 goals — after 3-0 with 2 remaining, lead 3 > 2
-      for (let i = 0; i < 3; i++) {
+      // Play all 5 shots
+      for (let i = 0; i < 5; i++) {
         if (s.phase === "reset") {
           s = reduceMatchState(s, { type: "advance", elapsedMs: 500 });
         }
@@ -142,7 +142,7 @@ describe("MatchFlow", () => {
       }
 
       expect(s.phase).toBe("match_end");
-      expect(s.score.player).toBe(3);
+      expect(s.score.player).toBe(5);
     });
 
     it("five shots ends match", () => {
@@ -168,17 +168,13 @@ describe("MatchFlow", () => {
 
     it("restart resets score and shot count", () => {
       let s = bootedState();
-      s = resolveGoal(s);
-      // Advance to aiming for next shot
-      if (s.phase === "reset") {
-        s = reduceMatchState(s, { type: "advance", elapsedMs: 500 });
+      // Play all 5 shots
+      for (let i = 0; i < 5; i++) {
+        if (s.phase === "reset") {
+          s = reduceMatchState(s, { type: "advance", elapsedMs: 500 });
+        }
+        s = resolveGoal(s);
       }
-      s = resolveGoal(s);
-      if (s.phase === "reset") {
-        s = reduceMatchState(s, { type: "advance", elapsedMs: 500 });
-      }
-      s = resolveGoal(s);
-      // Should be match_end after 3-0
       expect(s.phase).toBe("match_end");
 
       // Restart
@@ -224,13 +220,17 @@ describe("MatchFlow", () => {
       const afterBoot = reduceMatchState(boot, { type: "resolve_shot", outcome: "goal" });
       expect(afterBoot.score.player).toBe(0); // no change
 
+      // Play 5 shots to reach match_end
       let decided = bootedState();
-      decided = reduceMatchState(decided, { type: "resolve_shot", outcome: "goal" });
-      decided = reduceMatchState(decided, { type: "resolve_shot", outcome: "goal" });
-      decided = reduceMatchState(decided, { type: "resolve_shot", outcome: "goal" });
+      for (let i = 0; i < 5; i++) {
+        if (decided.phase === "reset") {
+          decided = reduceMatchState(decided, { type: "advance", elapsedMs: 500 });
+        }
+        decided = reduceMatchState(decided, { type: "resolve_shot", outcome: "goal" });
+      }
       expect(decided.phase).toBe("match_end");
       const afterEnd = reduceMatchState(decided, { type: "resolve_shot", outcome: "goal" });
-      expect(afterEnd.score.player).toBe(3); // no change after match_end
+      expect(afterEnd.score.player).toBe(5); // no change after match_end
     });
   });
 
@@ -239,11 +239,12 @@ describe("MatchFlow", () => {
       expect(isMatchDecided({ player: 3, goalkeeper: 2 }, 5)).toBe(true);
     });
 
-    it("is decided when lead is uncatchable", () => {
-      expect(isMatchDecided({ player: 3, goalkeeper: 0 }, 3)).toBe(true);
+    it("is NOT decided before all shots are taken", () => {
+      // Even with 3-0 lead at 3 shots, match continues
+      expect(isMatchDecided({ player: 3, goalkeeper: 0 }, 3)).toBe(false);
     });
 
-    it("is not decided when lead is catchable", () => {
+    it("is not decided mid-match", () => {
       expect(isMatchDecided({ player: 2, goalkeeper: 1 }, 3)).toBe(false);
     });
   });

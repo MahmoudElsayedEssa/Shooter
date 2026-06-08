@@ -49,16 +49,16 @@ export interface InputPenaltyState {
 export const INPUT_TYPES: readonly CapturedInputType[] = ["touch", "pointer", "mouse"] as const;
 
 export const INPUT_LIMITS = {
-  shotZoneMinRadiusPx: 44,
-  shotZoneViewportRatio: 0.14,
+  shotZoneMinRadiusPx: 52,
+  shotZoneViewportRatio: 0.22,
   minPointDistancePx: 4,
   minPointIntervalMs: 16,
   maxPoints: 48,
-  minValidPoints: 3,
-  minTotalDistancePx: 28,
-  minUpwardDeltaPx: 10,
-  minDurationMs: 50,
-  maxDurationMs: 1200,
+  minValidPoints: 2,
+  minTotalDistancePx: 20,
+  minUpwardDeltaPx: 5,
+  minDurationMs: 30,
+  maxDurationMs: 1500,
   trailVisibleFrameDelay: 1,
   trailFadeMinMs: 120,
   trailFadeMaxMs: 260,

@@ -11,7 +11,6 @@ import {
 import {
   captureInputPoint,
   sampleGesturePoint,
-  startsInsideShotZone,
   validateGesture,
   type GesturePoint
 } from "../systems/input/DrawToShootInput";
@@ -115,9 +114,9 @@ const KEEPER_PUPPET_ENABLED = false;
 
 // ─── Keeper Canonical Sizes (max allowed display height per pose) ───
 const KEEPER_CANONICAL = {
-  maxIdleHeight: 130,
-  maxDiveHeight: 115,
-  maxSaveHeight: 120,
+  maxIdleHeight: 160,
+  maxDiveHeight: 125,
+  maxSaveHeight: 140,
   // Max allowed stretch factor during squash/stretch animation
   maxStretch: 1.03,
 } as const;
@@ -434,6 +433,7 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   // State
   private matchState: MatchState = createMatchState();
   private phase: PlayableMatchSnapshot["phase"] = "aiming";
+  private _autoRestartScheduled = false;
   private outcome: PlayableOutcome | "none" = "none";
   private gesturePoints: readonly GesturePoint[] = [];
   private activePlan: PlayableShotPlan | null = null;
@@ -871,13 +871,6 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     }
 
     const point = toGesturePoint(pointer, this.cameras.main);
-    if (!startsInsideShotZone(point, {
-      centerX: BALL_START.x,
-      centerY: BALL_START.y,
-      viewportWidth: GAME_WIDTH
-    })) {
-      return;
-    }
 
     // Kill ball aiming pulse immediately so it never fights with flight scaling
     this.stopBallPulse();
@@ -1296,7 +1289,8 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.clearTrajectoryPreview();
     this.clearOutcomeEffects();
     this.clearFlightTrail();
-    this.resultText.setAlpha(0).setY(LAYOUT.resultText.y);
+    this.resultText.setAlpha(0).setY(LAYOUT.resultText.y).setColor("#f8fafc");
+    this._autoRestartScheduled = false;
     this.drawStaticField(false);
     this.startBallPulse();
     // Force camera to base state
@@ -1331,110 +1325,67 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.clearTrajectoryPreview();
     if (this.gesturePoints.length < 2) return;
 
-    const pressure = this.pressureState?.pressure ?? 0;
-    const brightness = 0.6 + pressure * 0.4;
-
     // Estimate power from current gesture length for color feedback
     const pathLen = this.gesturePoints.slice(1).reduce((sum, p, i) =>
       sum + Math.hypot(p.x - this.gesturePoints[i].x, p.y - this.gesturePoints[i].y), 0);
     const powerEstimate = Math.min(1, pathLen / 300);
 
-    // Path simplification (Ramer-Douglas-Peucker)
-    const simplified = this.simplifyTrailPath(this.gesturePoints, 2.5);
-    if (simplified.length < 2) return;
-
     // Power-based color (hue: blue 200 to orange 40)
     const hue = Math.round(200 - powerEstimate * 160);
     const coreColor = this.hslToHex(hue, 90, 65);
-    const glowColor = this.hslToHex(hue, 90, 55);
 
-    // Layer 1: Outer glow
-    this.trailGlow.lineStyle(18, glowColor, 0.12 * brightness);
-    this.strokeSmooth(this.trailGlow, simplified);
+    // ── Target reticle on goal ──
+    if (this.gesturePoints.length >= 3) {
+      try {
+        const previewIntent = interpretShotIntent(this.gesturePoints, {
+          viewportWidth: GAME_WIDTH,
+          ballY: BALL_START.y,
+          goalLeftX: GOAL_FRAME.leftX,
+          goalRightX: GOAL_FRAME.rightX,
+          goalTopY: GOAL_FRAME.topY,
+          goalBottomY: GOAL_FRAME.bottomY
+        });
+        const tx = previewIntent.targetX;
+        const ty = previewIntent.targetY;
 
-    // Layer 2: Shadow
-    this.trail.lineStyle(8, 0x111827, 0.45);
-    this.strokeSmooth(this.trail, simplified);
+        // Reticle outer ring (pulsing)
+        const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.006);
+        this.trailGlow.lineStyle(2, coreColor, 0.5 * pulse);
+        this.trailGlow.strokeCircle(tx, ty, 12);
+        this.trailGlow.lineStyle(1.5, 0xffffff, 0.7 * pulse);
+        this.trailGlow.strokeCircle(tx, ty, 6);
+        // Reticle crosshair
+        this.trailGlow.lineStyle(1, 0xffffff, 0.5 * pulse);
+        this.trailGlow.lineBetween(tx - 16, ty, tx - 8, ty);
+        this.trailGlow.lineBetween(tx + 8, ty, tx + 16, ty);
+        this.trailGlow.lineBetween(tx, ty - 16, tx, ty - 8);
+        this.trailGlow.lineBetween(tx, ty + 8, tx, ty + 16);
+        // Reticle center dot
+        this.trailGlow.fillStyle(coreColor, 0.8 * pulse);
+        this.trailGlow.fillCircle(tx, ty, 2.5);
 
-    // Layer 3: Core line
-    this.trail.lineStyle(4.5, coreColor, 0.88 * brightness);
-    this.strokeSmooth(this.trail, simplified);
-
-    // Layer 4: White highlight center
-    this.trail.lineStyle(1.5, 0xffffff, 0.7 * brightness);
-    this.strokeSmooth(this.trail, simplified);
-
-    // Brush tip at the end
-    if (simplified.length >= 2) {
-      const tip = simplified[simplified.length - 1];
-      this.trail.fillStyle(0xffffff, 0.85 * brightness);
-      this.trail.fillCircle(tip.x, tip.y, 3 + powerEstimate * 3);
-      this.trail.fillStyle(coreColor, 0.4 * brightness);
-      this.trail.fillCircle(tip.x, tip.y, 5 + powerEstimate * 4);
-    }
-  }
-
-  private simplifyTrailPath(
-    points: readonly { x: number; y: number }[],
-    epsilon: number
-  ): Array<{ x: number; y: number }> {
-    if (points.length <= 2) return points.map(p => ({ x: p.x, y: p.y }));
-    const first = points[0];
-    const last = points[points.length - 1];
-    let maxDist = 0;
-    let maxIdx = 0;
-    for (let i = 1; i < points.length - 1; i++) {
-      const dx = last.x - first.x;
-      const dy = last.y - first.y;
-      const lenSq = dx * dx + dy * dy;
-      let dist: number;
-      if (lenSq === 0) {
-        dist = Math.hypot(points[i].x - first.x, points[i].y - first.y);
-      } else {
-        dist = Math.abs(dy * points[i].x - dx * points[i].y + last.x * first.y - last.y * first.x) / Math.sqrt(lenSq);
-      }
-      if (dist > maxDist) { maxDist = dist; maxIdx = i; }
-    }
-    if (maxDist > epsilon) {
-      const left = this.simplifyTrailPath(points.slice(0, maxIdx + 1), epsilon);
-      const right = this.simplifyTrailPath(points.slice(maxIdx), epsilon);
-      return [...left.slice(0, -1), ...right];
-    }
-    return [{ x: first.x, y: first.y }, { x: last.x, y: last.y }];
-  }
-
-  private strokeSmooth(
-    gfx: Phaser.GameObjects.Graphics,
-    points: Array<{ x: number; y: number }>
-  ): void {
-    if (points.length < 2) return;
-    gfx.beginPath();
-    gfx.moveTo(points[0].x, points[0].y);
-    if (points.length === 2) {
-      gfx.lineTo(points[1].x, points[1].y);
-    } else {
-      const mid0x = (points[0].x + points[1].x) / 2;
-      const mid0y = (points[0].y + points[1].y) / 2;
-      gfx.lineTo(mid0x, mid0y);
-      for (let i = 1; i < points.length - 1; i++) {
-        const curr = points[i];
-        const next = points[i + 1];
-        const midX = (curr.x + next.x) / 2;
-        const midY = (curr.y + next.y) / 2;
-        const prevMidX = (points[i - 1].x + curr.x) / 2;
-        const prevMidY = (points[i - 1].y + curr.y) / 2;
-        for (let t = 0.25; t <= 1; t += 0.25) {
-          const inv = 1 - t;
-          const bx = inv * inv * prevMidX + 2 * inv * t * curr.x + t * t * midX;
-          const by = inv * inv * prevMidY + 2 * inv * t * curr.y + t * t * midY;
-          gfx.lineTo(bx, by);
+        // Dotted arc from ball to target
+        const arcSteps = 12;
+        this.trail.lineStyle(1.5, coreColor, 0.25);
+        for (let i = 0; i < arcSteps; i++) {
+          const t1 = i / arcSteps;
+          const t2 = (i + 0.4) / arcSteps; // gap between dots
+          // Quadratic bezier: ball → mid-arc → target
+          const midX = (BALL_START.x + tx) / 2;
+          const midY = Math.min(BALL_START.y, ty) - 40 * powerEstimate;
+          const x1 = (1 - t1) * (1 - t1) * BALL_START.x + 2 * (1 - t1) * t1 * midX + t1 * t1 * tx;
+          const y1 = (1 - t1) * (1 - t1) * BALL_START.y + 2 * (1 - t1) * t1 * midY + t1 * t1 * ty;
+          const x2 = (1 - t2) * (1 - t2) * BALL_START.x + 2 * (1 - t2) * t2 * midX + t2 * t2 * tx;
+          const y2 = (1 - t2) * (1 - t2) * BALL_START.y + 2 * (1 - t2) * t2 * midY + t2 * t2 * ty;
+          this.trail.lineBetween(x1, y1, x2, y2);
         }
+      } catch {
+        // Gesture too short for interpretation — skip preview
       }
-      const last = points[points.length - 1];
-      gfx.lineTo(last.x, last.y);
     }
-    gfx.strokePath();
   }
+
+
 
   private hslToHex(h: number, s: number, l: number): number {
     const sn = s / 100;
@@ -1489,14 +1440,14 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       this.hintText.setAlpha(0.6);
       this.hintText.setText(this.phase === "drawing" ? "Release to shoot" : ui.firstUseHint ?? "Drag again for next shot");
     } else if (this.phase === "match_end") {
-      const playerWon = this.matchState.score.player > this.matchState.score.goalkeeper;
-      const matchEndText = playerWon
-        ? "YOU WIN  ·  Tap to play again"
-        : "YOU LOSE  ·  Tap to play again";
-      this.hintText.setAlpha(0.85);
-      this.hintText.setText(matchEndText);
+      // Match result is shown by showMatchResult() after shot result fades.
+      // Only handle keeper celebration here on re-render.
+      const playerScore = this.matchState.score.player;
+      const keeperScore = this.matchState.score.goalkeeper;
+      const playerWon = playerScore > keeperScore;
+      const isDraw = playerScore === keeperScore;
       
-      if (!playerWon && KEEPER_PUPPET_ENABLED && this.puppet && this.puppet.getPose() !== "celebrate") {
+      if (!playerWon && !isDraw && KEEPER_PUPPET_ENABLED && this.puppet && this.puppet.getPose() !== "celebrate") {
         this.puppet.setPose("celebrate");
         this.puppet.getBodySprite().setPosition(getGoalCenterX(), VISUAL_KEEPER_Y);
       }
@@ -1676,15 +1627,31 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       this.keeper.setTexture(frame.textureKey);
     }
     this.keeperPose = frame.selectedPose;
+
+    // ── 3D perspective: keeper gets slightly smaller when higher (further from camera) ──
+    const groundY = VISUAL_KEEPER_Y;
+    const heightAboveGround = Math.max(0, groundY - frame.y);
+    // At max height (~80px up), reduce by ~8% to simulate depth
+    const perspectiveScale = 1 - (heightAboveGround / 600) * 0.08;
+    const finalScale = frame.scale * perspectiveScale;
+
     this.keeper
       .setOrigin(frame.origin.x, frame.origin.y)
       .setFlipX(frame.flipX)
       .setPosition(frame.x, frame.y)
       .setRotation(frame.rotation)
       .setAlpha(1);
-    setImageDisplayHeight(this.keeper, frame.displayHeight * frame.scale);
+    setImageDisplayHeight(this.keeper, frame.displayHeight * finalScale);
+
+    // ── 3D depth shading: slight darkening when airborne (further from light source) ──
+    const depthDarken = Math.min(heightAboveGround / 300, 0.15); // max 15% darker
     if (frame.tint !== null) {
       this.keeper.setTint(frame.tint);
+    } else if (depthDarken > 0.02) {
+      // Apply subtle grey tint to simulate distance darkening
+      const shade = Math.round(255 * (1 - depthDarken));
+      const depthTint = (shade << 16) | (shade << 8) | shade;
+      this.keeper.setTint(depthTint);
     } else {
       this.keeper.clearTint();
     }
@@ -2063,6 +2030,8 @@ export class PlayablePenaltyScene extends Phaser.Scene {
     this.resultText.setScale(0.6);
     this.resultText.setAlpha(0);
 
+    const isMatchOver = this.phase === "match_end";
+
     // Clean, elegant scale-in with subtle fade
     this.tweens.add({
       targets: this.resultText,
@@ -2073,16 +2042,78 @@ export class PlayablePenaltyScene extends Phaser.Scene {
       ease: "Cubic.easeOut",
       onComplete: () => {
         this.time.delayedCall(displayMs, () => {
-          this.tweens.add({
-            targets: this.resultText,
-            alpha: 0,
-            scaleY: 0.95,
-            duration: 300,
-            ease: "Cubic.easeIn"
-          });
+          if (isMatchOver) {
+            // After shot result fades, show match result
+            this.tweens.add({
+              targets: this.resultText,
+              alpha: 0,
+              scaleY: 0.95,
+              duration: 300,
+              ease: "Cubic.easeIn",
+              onComplete: () => {
+                this.showMatchResult();
+              }
+            });
+          } else {
+            this.tweens.add({
+              targets: this.resultText,
+              alpha: 0,
+              scaleY: 0.95,
+              duration: 300,
+              ease: "Cubic.easeIn"
+            });
+          }
         });
       }
     });
+  }
+
+  private showMatchResult(): void {
+    const playerScore = this.matchState.score.player;
+    const keeperScore = this.matchState.score.goalkeeper;
+    const playerWon = playerScore > keeperScore;
+    const isDraw = playerScore === keeperScore;
+
+    if (playerWon) {
+      this.resultText.setText("YOU WIN! 🏆");
+      this.resultText.setColor("#FFD700");
+    } else if (isDraw) {
+      this.resultText.setText("DRAW!");
+      this.resultText.setColor("#9ca3af");
+    } else {
+      this.resultText.setText("YOU LOST!");
+      this.resultText.setColor("#E00800");
+    }
+
+    this.resultText.setScale(0.5);
+    this.resultText.setAlpha(0);
+    this.resultText.setY(GAME_HEIGHT / 2 - 80);
+
+    // Animate in the match result
+    this.tweens.add({
+      targets: this.resultText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      alpha: 1,
+      duration: 500,
+      ease: "Back.easeOut"
+    });
+
+    // Show score in hint text
+    const matchEndText = `${playerScore} - ${keeperScore}  ·  Tap to play again`;
+    this.hintText.setAlpha(0.85);
+    this.hintText.setText(matchEndText);
+
+    // Auto-restart after 4 seconds
+    if (!this._autoRestartScheduled) {
+      this._autoRestartScheduled = true;
+      this.time.delayedCall(4000, () => {
+        if (this.phase === "match_end") {
+          this.resetMatch();
+        }
+        this._autoRestartScheduled = false;
+      });
+    }
   }
 
   /** Subtle flash overlay using e& brand tones */
@@ -2381,23 +2412,33 @@ export class PlayablePenaltyScene extends Phaser.Scene {
   }
 
   private nudgeInvalidGesture(): void {
-    // Tiny ball shake — non-punishing, immediate return to aiming
+    // Stronger ball shake — clearly communicates "try again"
+    this.tweens.killTweensOf(this.ball);
     this.tweens.add({
       targets: this.ball,
-      x: BALL_START.x + 3,
-      duration: 40,
+      x: BALL_START.x + 8,
+      duration: 50,
       yoyo: true,
-      repeat: 1,
+      repeat: 3,
       ease: "Sine.easeInOut",
       onComplete: () => this.ball.setPosition(BALL_START.x, BALL_START.y)
     });
-    // Hint text flash
+    // Red tint flash on ball
+    this.ball.setTint(0xff6666);
+    this.time.delayedCall(250, () => this.ball.setTint(0xffffff));
+    // Hint text pop with emphasis
+    this.hintText.setAlpha(1);
     this.tweens.add({
       targets: this.hintText,
-      alpha: 1.0,
-      duration: 100,
+      alpha: 0.6,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 150,
       yoyo: true,
-      ease: "Sine.easeInOut"
+      ease: "Sine.easeInOut",
+      onComplete: () => {
+        this.hintText.setScale(1, 1);
+      }
     });
   }
 
@@ -2675,30 +2716,26 @@ function getKeeperX(direction: DiveDirection): number {
 
 function getKeeperCollisionState(decision: GoalkeeperDecision, durationMs: number): KeeperState {
   const direction = decision.tactical.diveDirection;
-  const wrongFootedReachPenalty = decision.physical.wrongFooted ? 0.78 : 1;
+  // Cap reach to prevent keeper from being unbeatable
+  const cappedReach = Math.min(decision.physical.reachRadiusPx, 85);
 
   return {
     centerX: getKeeperHandX(direction),
     centerY: direction === "center" ? KEEPER_Y + 6 : KEEPER_Y - 10,
-    reachRadiusPx: getKeeperHandRadius(direction) * wrongFootedReachPenalty,
-    // Fixed: was 0.9 (90% of flight) — now 0.55 (55%) giving keeper a real save window
-    saveWindowStartMs: Math.max(decision.physical.reactionMs, durationMs * 0.55),
+    reachRadiusPx: cappedReach,
+    saveWindowStartMs: Math.max(decision.physical.reactionMs, durationMs * 0.50),
     saveWindowEndMs: durationMs
   };
 }
 
 function getKeeperHandX(direction: DiveDirection): number {
   if (direction === "left") {
-    return GOAL_FRAME.leftX + 80;
+    return GOAL_FRAME.leftX + 65;
   }
   if (direction === "right") {
-    return GOAL_FRAME.rightX - 80;
+    return GOAL_FRAME.rightX - 65;
   }
   return getGoalCenterX();
-}
-
-function getKeeperHandRadius(direction: DiveDirection): number {
-  return direction === "center" ? 50 : 75;
 }
 
 function toGesturePoint(pointer: Phaser.Input.Pointer, camera: Phaser.Cameras.Scene2D.Camera): GesturePoint {

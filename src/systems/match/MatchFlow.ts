@@ -128,9 +128,9 @@ export function reduceMatchState(state: MatchState, action: MatchAction): MatchS
   }
 }
 
-export function isMatchDecided(score: MatchScore, shotsTaken: number): boolean {
-  const remainingShots = MATCH_LIMITS.maxShots - shotsTaken;
-  return shotsTaken >= MATCH_LIMITS.maxShots || Math.abs(score.player - score.goalkeeper) > remainingShots;
+export function isMatchDecided(_score: MatchScore, shotsTaken: number): boolean {
+  // Always play all 5 shots — match ends only after all shots are taken
+  return shotsTaken >= MATCH_LIMITS.maxShots;
 }
 
 /**

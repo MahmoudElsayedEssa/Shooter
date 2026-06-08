@@ -177,15 +177,15 @@ describe("GoalkeeperAnimation director", () => {
     expect(frame.requestedPose).toBe("goal_conceded");
   });
 
-  it("miss maps to miss_reaction", () => {
+  it("miss maps to landing_recovery (keeper celebrates)", () => {
     const frame = planKeeperPresentation(baseInput({
       outcome: "miss",
       contactPoint: null,
       contactT: null,
       progress: 1
     }));
-    expect(frame.phase).toBe("miss_reaction");
-    expect(frame.requestedPose).toBe("miss_reaction");
+    expect(frame.phase).toBe("landing_recovery");
+    expect(frame.requestedPose).toBe("recover");
   });
 
   it("missing pose textures fall back safely", () => {

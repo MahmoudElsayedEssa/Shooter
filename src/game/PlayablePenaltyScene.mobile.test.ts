@@ -23,8 +23,9 @@ describe("PlayablePenaltyScene mobile portrait layout", () => {
   });
 
   it("uses a finger-sized shot zone on mobile widths", () => {
-    expect(getShotZoneRadius(540)).toBeCloseTo(75.6);
-    expect(getShotZoneRadius(320)).toBeCloseTo(44.8);
-    expect(getShotZoneRadius(240)).toBe(44);
+    // 540 * 0.22 = 118.8, 320 * 0.22 = 70.4, 240 * 0.22 = 52.8 (but min is 52)
+    expect(getShotZoneRadius(540)).toBeCloseTo(118.8);
+    expect(getShotZoneRadius(320)).toBeCloseTo(70.4);
+    expect(getShotZoneRadius(240)).toBeCloseTo(52.8);
   });
 });

@@ -1,4 +1,4 @@
-﻿import {
+import {
   resolveDifficultyBalance,
   shouldWrongCommit,
   type DifficultyBalance,
@@ -80,11 +80,11 @@ export const GOALKEEPER_MOOD_CONFIG: Readonly<Record<GoalkeeperMood, {
   readonly face: AnimationLayer["face"];
   readonly baselineReachPx: number;
 }>> = {
-  calm: { reactionRangeMs: [140, 190], accuracyBase: 0.52, risk: 0.18, face: "neutral", baselineReachPx: 48 },
-  focused: { reactionRangeMs: [105, 155], accuracyBase: 0.68, risk: 0.1, face: "locked_in", baselineReachPx: 54 },
-  nervous: { reactionRangeMs: [170, 240], accuracyBase: 0.42, risk: 0.28, face: "worried", baselineReachPx: 44 },
-  aggressive: { reactionRangeMs: [80, 130], accuracyBase: 0.47, risk: 0.46, face: "challenging", baselineReachPx: 52 },
-  desperate: { reactionRangeMs: [70, 180], accuracyBase: 0.38, risk: 0.62, face: "strained", baselineReachPx: 58 }
+  calm: { reactionRangeMs: [140, 190], accuracyBase: 0.58, risk: 0.15, face: "neutral", baselineReachPx: 55 },
+  focused: { reactionRangeMs: [105, 155], accuracyBase: 0.72, risk: 0.08, face: "locked_in", baselineReachPx: 62 },
+  nervous: { reactionRangeMs: [170, 240], accuracyBase: 0.48, risk: 0.24, face: "worried", baselineReachPx: 50 },
+  aggressive: { reactionRangeMs: [80, 130], accuracyBase: 0.54, risk: 0.38, face: "challenging", baselineReachPx: 58 },
+  desperate: { reactionRangeMs: [70, 180], accuracyBase: 0.44, risk: 0.50, face: "strained", baselineReachPx: 68 }
 } as const;
 
 export function decideGoalkeeperAction(context: GoalkeeperContext): GoalkeeperDecision {

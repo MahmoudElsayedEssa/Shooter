@@ -25,8 +25,8 @@ export interface ShotIntent {
 export const SHOT_INTERPRETER_LIMITS = {
   minForce: 0.55,
   maxForce: 1.35,
-  minSpeedPxPerMs: 0.25,
-  maxSpeedPxPerMs: 1.2,
+  minSpeedPxPerMs: 0.2,
+  maxSpeedPxPerMs: 1.6,
   minGestureQuality: 0.35,
   curveReferenceWidthPx: 120,
   maxPrecisionPenaltyPx: 42,
@@ -37,24 +37,28 @@ export const SHOT_INTERPRETER_LIMITS = {
   shortPathPenalty: 0.15,
   speedOutOfRangePenalty: 0.12,
   shortPathDistancePx: 48,
-  // Enhanced curve & power (from reference 3D game)
+  // Enhanced curve & power
   /** Minimum useful path deviation in px for curve detection */
   minBaselineLengthPx: 10,
-  /** Max useful deviation in px — higher = need bigger curves for max spin */
-  maxUsefulDeviationPx: 56,
+  /** Max useful deviation in px — lower = easier curve control */
+  maxUsefulDeviationPx: 35,
   /** Penalty per sign change in curve direction (zigzag filtering) */
   signChangePenaltyScale: 0.22,
   /** Minimum chaos multiplier — even chaotic gestures get some curve */
   minChaosFactor: 0.3,
   /** Path length drag thresholds for power (px) */
-  powerDragMinPx: 45,
-  powerDragMaxPx: 620,
+  powerDragMinPx: 35,
+  powerDragMaxPx: 300,
   /** Weight for path-length power vs speed power */
   powerLengthWeight: 0.72,
   /** Downward drawing penalty multiplier */
   downwardPenaltyScale: 0.45,
   /** Winding penalty scale (extra path / direct path) */
-  windingPenaltyScale: 0.55
+  windingPenaltyScale: 0.55,
+  /** How much horizontal swipe displacement maps to goal width (px of swipe → full goal half) */
+  swipeToGoalXScale: 120,
+  /** Weight of swipe direction vs endpoint position (1.0 = pure swipe, 0.0 = pure endpoint) */
+  swipeDirectionWeight: 0.75
 } as const;
 
 export function interpretShotIntent(
@@ -71,8 +75,8 @@ export function interpretShotIntent(
   const totalDistance = getPathDistance(points);
   const directDistance = getDistance(first, last);
   const speedPxPerMs = totalDistance / durationMs;
-  const rawTargetX = mapEndpointToGoalX(last.x, context);
-  const rawTargetY = mapEndpointToGoalY(last.y, context);
+  const rawTargetX = mapSwipeToGoalX(first, last, context);
+  const rawTargetY = mapSwipeToGoalY(first, last, context);
   const curve = getCurve(points, context.viewportWidth);
   const pathComplexity = directDistance === 0 ? 1 : totalDistance / directDistance;
   const gestureQuality = getGestureQuality(points, speedPxPerMs, pathComplexity);
@@ -90,25 +94,46 @@ export function interpretShotIntent(
   };
 }
 
-function mapEndpointToGoalX(endpointX: number, context: ShotInterpretationContext): number {
-  // Map raw X endpoint to goal width range with small miss margin
+/**
+ * Map horizontal swipe direction to goal X target.
+ * Uses a hybrid of swipe displacement (primary) + endpoint position (secondary).
+ * Swipe left → ball goes left. Swipe right → ball goes right.
+ */
+function mapSwipeToGoalX(first: GesturePoint, last: GesturePoint, context: ShotInterpretationContext): number {
   const goalCenterX = (context.goalLeftX + context.goalRightX) / 2;
   const goalHalfWidth = (context.goalRightX - context.goalLeftX) / 2;
-  const offset = endpointX - goalCenterX;
-  // Allow 5% overshoot for extreme angles (reduced from 12% to prevent visual mismatch)
-  const missMarginRatio = 1.05;
-  return goalCenterX + clamp(offset, -goalHalfWidth * missMarginRatio, goalHalfWidth * missMarginRatio);
+
+  // Primary: horizontal displacement of the swipe (direction-based)
+  const swipeDx = last.x - first.x;
+  const swipeScale = SHOT_INTERPRETER_LIMITS.swipeToGoalXScale;
+  const swipeTarget = goalCenterX + (swipeDx / swipeScale) * goalHalfWidth;
+
+  // Secondary: endpoint offset from ball center (position-based, for fine control)
+  const endpointOffset = last.x - goalCenterX;
+  const endpointTarget = goalCenterX + endpointOffset;
+
+  // Blend: mostly swipe direction, slightly influenced by endpoint
+  const w = SHOT_INTERPRETER_LIMITS.swipeDirectionWeight;
+  const blended = swipeTarget * w + endpointTarget * (1 - w);
+
+  // Allow 8% overshoot for extreme angles (can miss wide)
+  const missMarginRatio = 1.08;
+  return clamp(blended, goalCenterX - goalHalfWidth * missMarginRatio, goalCenterX + goalHalfWidth * missMarginRatio);
 }
 
-function mapEndpointToGoalY(endpointY: number, context: ShotInterpretationContext): number {
-  // Remap: the gesture goes from ballY upward.
-  // We use a fixed logical drag distance (e.g. 180px) for a "full power" top-corner shot
-  // rather than making the user drag all the way to the top of the goal on screen.
-  const gestureRange = context.ballY - endpointY; // positive = drew upward
-  const maxDragPx = 180; // A reasonable drag distance on mobile
-  // Cap at 0.98 — the ball should never target above the crossbar.
-  // Over the bar = always a miss in real football.
-  const ratio = clamp(gestureRange / maxDragPx, -0.02, 0.98);
+/**
+ * Map vertical swipe distance to goal Y target.
+ * Scales proportionally: short swipe = low shot, long swipe = high shot.
+ * Adapts to actual goal height instead of a fixed 180px cap.
+ */
+function mapSwipeToGoalY(first: GesturePoint, last: GesturePoint, context: ShotInterpretationContext): number {
+  const gestureRange = first.y - last.y; // positive = drew upward
+  // Scale to the distance from ball to goal top (~400px on 960px viewport)
+  // Use 60% of that distance as "full range" so players don't need to swipe their entire screen
+  const fullDragDistance = (context.ballY - context.goalTopY) * 0.6;
+  const maxDragPx = Math.max(120, fullDragDistance);
+  // Cap at 0.95 — very hard to hit the exact crossbar (realistic)
+  const ratio = clamp(gestureRange / maxDragPx, -0.02, 0.95);
   // Map ratio to goal Y range: ratio 0 = bottom, ratio 1 = top
   const goalHeight = context.goalBottomY - context.goalTopY;
   return context.goalBottomY - goalHeight * ratio;

@@ -112,7 +112,7 @@ describe("GoalkeeperAI", () => {
         curve: 0, shotQuality: 0.3,
       });
       let foundWrongFooted = false;
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 100; i++) {
         const decision = decideGoalkeeperAction({ ...ctx, aiSeed: `wrong-foot-${i}` });
         if (decision.physical.wrongFooted) {
           foundWrongFooted = true;

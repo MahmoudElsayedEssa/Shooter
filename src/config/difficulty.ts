@@ -1,4 +1,4 @@
-﻿import { clamp } from "../core/math";
+import { clamp } from "../core/math";
 
 export type DifficultyPresetId = "rookie" | "standard" | "elite";
 
@@ -35,7 +35,7 @@ export const DIFFICULTY_PRESETS: Readonly<Record<DifficultyPresetId, DifficultyP
     predictionErrorPx: 28,
     reactionTimeMultiplier: 1.16,
     reachRadiusMultiplier: 0.9,
-    wrongCommitChance: 0.18,
+    wrongCommitChance: 0.15,
     shotQualityTolerance: 0.35,
     curveDifficultyMultiplier: 1.2,
     skillMultipliersByShot: GOALKEEPER_SKILL_MULTIPLIERS,
@@ -55,8 +55,8 @@ export const DIFFICULTY_PRESETS: Readonly<Record<DifficultyPresetId, DifficultyP
   standard: {
     predictionErrorPx: 18,
     reactionTimeMultiplier: 1,
-    reachRadiusMultiplier: 1,
-    wrongCommitChance: 0.1,
+    reachRadiusMultiplier: 1.05,
+    wrongCommitChance: 0.08,
     shotQualityTolerance: 0.22,
     curveDifficultyMultiplier: 1,
     skillMultipliersByShot: GOALKEEPER_SKILL_MULTIPLIERS,
@@ -76,7 +76,7 @@ export const DIFFICULTY_PRESETS: Readonly<Record<DifficultyPresetId, DifficultyP
   elite: {
     predictionErrorPx: 10,
     reactionTimeMultiplier: 0.9,
-    reachRadiusMultiplier: 1.08,
+    reachRadiusMultiplier: 1.12,
     wrongCommitChance: 0.04,
     shotQualityTolerance: 0.12,
     curveDifficultyMultiplier: 0.82,
